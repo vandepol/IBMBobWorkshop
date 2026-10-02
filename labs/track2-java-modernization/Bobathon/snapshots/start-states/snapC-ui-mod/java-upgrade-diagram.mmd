@@ -1,0 +1,36 @@
+flowchart TD
+    classDef java8 fill:#2a0a18,stroke:#ee5396,stroke-width:2px
+    classDef java21 fill:#081a1c,stroke:#009d9a,stroke-width:2px
+    classDef process fill:#001141,stroke:#4589ff,stroke-width:2px,text-align:left
+    
+    start["Java 8 to Java 21 Modernization"] --> analysis["Dependency Analysis"]
+    
+    analysis --> issue1["Maven Dependency Warning<br/>javassist 3.20.0-GA<br/>references non-existent tools.jar"]:::java8
+    analysis --> issue2["Legacy Java EE Features<br/>servlet-3.1, jsp-2.3, jdbc-4.1"]:::java8
+    analysis --> issue3["Legacy JSTL Dependency<br/>javax.servlet:jstl:1.2"]:::java8
+    
+    issue1 --> task0["<b>Task 0: Maven Dependency Resolution</b><br/>• Enforced javassist 3.29.2-GA globally<br/>• Added exclusions in struts2 dependencies<br/>• Removed tools.jar reference"]:::process
+    
+    issue2 --> task1a["<b>Task 1: Jakarta EE 10 Migration</b><br/>• Updated server.xml features<br/>• Replaced Java EE with Jakarta EE 10<br/>• Updated mpMetrics to 5.1"]:::process
+    
+    issue3 --> task1b["<b>Task 1: JSTL Dependency Update</b><br/>• Replaced javax.servlet:jstl<br/>• Added jakarta.servlet.jsp.jstl:3.0.1<br/>• Ensured Jakarta namespace compliance"]:::process
+    
+    task0 --> result0["✅ Clean Maven Build<br/>No dependency warnings<br/>javassist 3.29.2-GA enforced"]:::java21
+    
+    task1a --> result1["✅ Jakarta EE 10 Compatible<br/>jakartaee-10.0 features<br/>servlet-6.0, pages-3.1, jdbc-4.3"]:::java21
+    
+    task1b --> result1
+    
+    result0 --> final["✅ Java 21 & Jakarta EE 10<br/>Fully Compatible Application<br/>BUILD SUCCESS"]:::java21
+    result1 --> final
+    
+    subgraph tasks["📋 Task Summary"]
+        taskInfo0["<b>Task 0: Issue Resolution</b><br/>• Cost: 0.11 coins<br/>• Tokens: 116,803<br/>• Time: 143.5s"]:::process
+        taskInfo1["<b>Task 1: Jakarta EE 10 Upgrade</b><br/>• Cost: 0.21 coins<br/>• Tokens: 167,681<br/>• Time: 110.2s"]:::process
+    end
+    
+    subgraph legend["🔍 Legend"]
+        java8Example["Java 8 / Legacy Code"]:::java8
+        processExample["Modernization Step"]:::process
+        java21Example["Java 21 / Jakarta EE 10"]:::java21
+    end

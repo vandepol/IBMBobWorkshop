@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdlc_incident_management_examples>
+  <overview>
+    Complete examples of incident management workflows for different incident types,
+    showing how the mode adapts to various scenarios.
+  </overview>
+
+  <example name="performance_incident">
+    <incident_type>Performance Issue</incident_type>
+    <scenario>Application experiencing slow response times</scenario>
+    
+    <user_report>
+      "Users are reporting that the application is very slow. Pages are taking 3-5 seconds to load."
+    </user_report>
+
+    <workflow>
+      <step number="1" phase="Incident Creation">
+        <bob_action>
+          I'll create a ServiceNow incident to track this performance issue.
+          Let me gather the details:
+          - Short description: Application experiencing slow response times
+          - Description: Users reporting 3-5 second delays when accessing pages
+          - Urgency: Medium (2) - significant degradation but system functional
+          - Impact: Medium (2) - affecting multiple users
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>create_incident</tool_name>
+        </tool_use>
+        
+        <result>Incident INC0010042 created successfully</result>
+      </step>
+
+      <step number="2" phase="Diagnosis">
+        <bob_action>
+          Now I'll run a health check to diagnose the performance issue.
+          This will check all services and measure response times.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/health-check.yml</playbook>
+        </tool_use>
+        
+        <result>
+          Health check shows:
+          - Backend: responding but slow (3.2s)
+          - Frontend: normal (0.1s)
+          - Database: normal (0.05s)
+          
+          Root cause: Backend performance degradation
+        </result>
+        
+        <bob_action>
+          I've identified the issue - the backend is responding slowly.
+          Let me update ServiceNow with these findings.
+        </bob_action>
+      </step>
+
+      <step number="3" phase="Remediation">
+        <bob_action>
+          I'll run the fix-performance playbook to address the backend slowness.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/fix-performance.yml</playbook>
+        </tool_use>
+        
+        <result>Performance fix applied successfully</result>
+      </step>
+
+      <step number="4" phase="Verification">
+        <bob_action>
+          Let me verify the fix by running the health check again.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/health-check.yml</playbook>
+        </tool_use>
+        
+        <result>
+          Health check shows:
+          - Backend: normal (0.08s) - 40x improvement!
+          - Frontend: normal (0.1s)
+          - Database: normal (0.05s)
+          
+          All services healthy and performing normally.
+        </result>
+      </step>
+
+      <step number="5" phase="Closure">
+        <bob_action>
+          Performance issue resolved. Updating ServiceNow incident to resolved state.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>update_incident</tool_name>
+          <state>6</state>
+          <work_notes>
+            Performance issue resolved. Backend response time improved from 3.2s to 0.08s.
+            Applied fix-performance playbook. All services now healthy.
+          </work_notes>
+        </tool_use>
+        
+        <result>Incident INC0010042 marked as Resolved</result>
+      </step>
+    </workflow>
+  </example>
+
+  <example name="deployment_failure">
+    <incident_type>Deployment Failure</incident_type>
+    <scenario>Recent deployment caused application errors</scenario>
+    
+    <user_report>
+      "The deployment we just did is causing errors. Users can't log in."
+    </user_report>
+
+    <workflow>
+      <step number="1" phase="Incident Creation">
+        <bob_action>
+          I'll create a high-priority incident for this deployment failure.
+          - Short description: Deployment failure causing login errors
+          - Description: Recent deployment preventing user authentication
+          - Urgency: High (1) - users cannot access system
+          - Impact: High (1) - affects all users
+        </bob_action>
+        
+        <result>Incident INC0010043 created with high priority</result>
+      </step>
+
+      <step number="2" phase="Diagnosis">
+        <bob_action>
+          Let me check the current state of the application.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/health-check.yml</playbook>
+        </tool_use>
+        
+        <result>
+          Health check shows:
+          - Backend: errors in authentication module
+          - Frontend: unable to connect to backend auth endpoint
+          - Database: normal
+          
+          Root cause: Recent deployment broke authentication
+        </result>
+      </step>
+
+      <step number="3" phase="Remediation">
+        <bob_action>
+          Since the recent deployment caused this, I recommend rolling back
+          to the previous working version. This will restore functionality
+          while we investigate the deployment issue.
+          
+          Shall I proceed with the rollback?
+        </bob_action>
+        
+        <user_confirmation>Yes, please rollback</user_confirmation>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/rollback.yml</playbook>
+        </tool_use>
+        
+        <result>Rollback completed successfully</result>
+      </step>
+
+      <step number="4" phase="Verification">
+        <bob_action>
+          Verifying that the rollback restored functionality.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/health-check.yml</playbook>
+        </tool_use>
+        
+        <result>
+          All services healthy. Authentication working normally.
+          Users can now log in successfully.
+        </result>
+      </step>
+
+      <step number="5" phase="Closure">
+        <bob_action>
+          Deployment failure resolved via rollback. Updating incident.
+          
+          Note: The failed deployment should be investigated separately
+          to identify and fix the authentication issue before redeploying.
+        </bob_action>
+        
+        <result>
+          Incident INC0010043 resolved.
+          Follow-up task created to investigate deployment failure.
+        </result>
+      </step>
+    </workflow>
+  </example>
+
+  <example name="configuration_issue">
+    <incident_type>Configuration Problem</incident_type>
+    <scenario>Application using wrong configuration settings</scenario>
+    
+    <user_report>
+      "The application is connecting to the wrong database. We need to update the configuration."
+    </user_report>
+
+    <workflow>
+      <step number="1" phase="Incident Creation">
+        <bob_action>
+          Creating incident for configuration issue.
+          - Short description: Application using incorrect database configuration
+          - Description: Need to update database connection settings
+          - Urgency: Medium (2)
+          - Impact: Medium (2)
+        </bob_action>
+        
+        <result>Incident INC0010044 created</result>
+      </step>
+
+      <step number="2" phase="Diagnosis">
+        <bob_action>
+          Let me check the current configuration and verify the issue.
+        </bob_action>
+        
+        <tool_use>
+          <tool>read_file</tool>
+          <path>config/database.yml</path>
+        </tool_use>
+        
+        <result>
+          Current configuration shows connection to development database.
+          Should be using production database.
+        </result>
+      </step>
+
+      <step number="3" phase="Remediation">
+        <bob_action>
+          I'll run the update-config playbook to apply the correct database settings.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/update-config.yml</playbook>
+        </tool_use>
+        
+        <result>Configuration updated successfully</result>
+      </step>
+
+      <step number="4" phase="Verification">
+        <bob_action>
+          Verifying the configuration change.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/health-check.yml</playbook>
+        </tool_use>
+        
+        <result>
+          Application now connected to correct production database.
+          All services healthy.
+        </result>
+      </step>
+
+      <step number="5" phase="Closure">
+        <bob_action>
+          Configuration issue resolved. Database settings updated to production.
+        </bob_action>
+        
+        <result>Incident INC0010044 resolved</result>
+      </step>
+    </workflow>
+  </example>
+
+  <example name="backup_request">
+    <incident_type>Backup Operation</incident_type>
+    <scenario>Need to perform database backup before maintenance</scenario>
+    
+    <user_report>
+      "We need to backup the database before the scheduled maintenance window."
+    </user_report>
+
+    <workflow>
+      <step number="1" phase="Incident Creation">
+        <bob_action>
+          Creating incident for backup operation.
+          - Short description: Database backup required for maintenance
+          - Description: Backup needed before scheduled maintenance window
+          - Urgency: Medium (2)
+          - Impact: Low (3) - preventive action
+        </bob_action>
+        
+        <result>Incident INC0010045 created</result>
+      </step>
+
+      <step number="2" phase="Assessment">
+        <bob_action>
+          This is a backup operation. I'll verify the database is accessible
+          and ready for backup.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/health-check.yml</playbook>
+        </tool_use>
+        
+        <result>Database is healthy and accessible</result>
+      </step>
+
+      <step number="3" phase="Execution">
+        <bob_action>
+          Running database backup playbook.
+        </bob_action>
+        
+        <tool_use>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <playbook>ansible/playbooks/backup-database.yml</playbook>
+        </tool_use>
+        
+        <result>
+          Database backup completed successfully.
+          Backup file: backup_2026-02-25_23-00-00.sql
+          Size: 2.3 GB
+          Location: /backups/
+        </result>
+      </step>
+
+      <step number="4" phase="Verification">
+        <bob_action>
+          Verifying backup file integrity.
+        </bob_action>
+        
+        <tool_use>
+          <tool>execute_command</tool>
+          <command>ls -lh /backups/backup_2026-02-25_23-00-00.sql</command>
+        </tool_use>
+        
+        <result>Backup file exists and is complete (2.3 GB)</result>
+      </step>
+
+      <step number="5" phase="Closure">
+        <bob_action>
+          Database backup completed successfully. System ready for maintenance.
+        </bob_action>
+        
+        <result>Incident INC0010045 resolved</result>
+      </step>
+    </workflow>
+  </example>
+
+  <adaptive_behavior_examples>
+    <example name="missing_playbook">
+      <situation>Required playbook not available</situation>
+      <bob_response>
+        I notice the fix-performance playbook isn't available in the expected location.
+        Let me check what playbooks are available and suggest alternatives.
+      </bob_response>
+      <action>
+        <tool>list_files</tool>
+        <path>ansible/playbooks/</path>
+      </action>
+      <adaptation>
+        Based on available playbooks, I can use manual commands to address the issue,
+        or we can create a new playbook for this specific scenario.
+      </adaptation>
+    </example>
+
+    <example name="servicenow_unavailable">
+      <situation>ServiceNow API not accessible</situation>
+      <bob_response>
+        I'm unable to connect to ServiceNow at the moment. I'll proceed with
+        incident management using manual tracking and update ServiceNow when
+        it becomes available.
+      </bob_response>
+      <adaptation>
+        - Document all actions in conversation
+        - Maintain incident details locally
+        - Provide summary for manual ServiceNow entry
+        - Continue with diagnosis and remediation
+      </adaptation>
+    </example>
+
+    <example name="complex_incident">
+      <situation>Incident requires multiple remediation attempts</situation>
+      <bob_response>
+        The initial fix didn't fully resolve the issue. Let me run diagnostics
+        again to see the current state and determine next steps.
+      </bob_response>
+      <adaptation>
+        - Re-run health checks
+        - Analyze what changed and what didn't
+        - Try alternative remediation approach
+        - Document each attempt in ServiceNow
+        - Escalate if multiple attempts fail
+      </adaptation>
+    </example>
+  </adaptive_behavior_examples>
+
+  <communication_patterns>
+    <pattern name="status_update">
+      <when>After each major step</when>
+      <template>
+        [Action completed]. [Key results]. [Next step].
+      </template>
+      <example>
+        Health check completed. Backend showing slow response (3.2s).
+        Now I'll run the fix-performance playbook to address this.
+      </example>
+    </pattern>
+
+    <pattern name="seeking_confirmation">
+      <when>Before potentially disruptive actions</when>
+      <template>
+        I recommend [action] because [reason]. This will [impact].
+        Shall I proceed?
+      </template>
+      <example>
+        I recommend rolling back the deployment because it's causing authentication
+        failures. This will restore functionality while we investigate the issue.
+        Shall I proceed with the rollback?
+      </example>
+    </pattern>
+
+    <pattern name="explaining_findings">
+      <when>After diagnosis</when>
+      <template>
+        Diagnosis complete. [Summary of findings]. Root cause: [cause].
+        [Recommended action].
+      </template>
+      <example>
+        Diagnosis complete. The health check shows the backend is responding slowly (3.2s)
+        while other services are normal. Root cause: Backend performance degradation.
+        I'll apply the fix-performance playbook to resolve this.
+      </example>
+    </pattern>
+  </communication_patterns>
+</sdlc_incident_management_examples>
+
+<!-- Made with Bob -->

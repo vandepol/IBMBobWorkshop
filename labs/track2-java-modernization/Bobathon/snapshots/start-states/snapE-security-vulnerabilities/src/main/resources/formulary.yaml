@@ -1,0 +1,22 @@
+---
+# Medicine formulary configuration
+# Loaded by com.pharmacy.util.FormularyLoader (uses snakeyaml 1.30)
+formulary_version: "2024.1"
+
+categories:
+  - Analgesics
+  - Antibiotics
+  - Antihypertensives
+  - Antidiabetics
+  - Antihistamines
+  - Antidepressants
+  - Cardiovascular
+  - Gastrointestinal
+  - Respiratory
+  - Vitamins
+
+approved_manufacturers:
+  - PharmaCorp
+  - MediSupply
+  - BioPharm
+  - HealthGen

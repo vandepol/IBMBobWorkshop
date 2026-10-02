@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdlc_incident_management_best_practices>
+  <overview>
+    Best practices for effective SDLC incident management using Bob with
+    ServiceNow, Ansible, and Terraform integration.
+  </overview>
+
+  <incident_management_principles>
+    <principle name="Document Everything">
+      <description>
+        Maintain complete audit trail throughout incident lifecycle
+      </description>
+      <rationale>
+        Provides accountability, enables learning, and supports compliance
+      </rationale>
+      <implementation>
+        - Update incident tracking (ServiceNow or local markdown) after each major step
+        - Include diagnostic findings in work notes or documentation
+        - Document remediation actions taken
+        - Record verification results
+        - If ServiceNow unavailable, maintain local documentation for later entry
+      </implementation>
+    </principle>
+
+    <principle name="Diagnose Before Acting">
+      <description>
+        Always run diagnostics before attempting fixes
+      </description>
+      <rationale>
+        Prevents making problems worse and ensures correct remediation
+      </rationale>
+      <implementation>
+        - Run health checks first
+        - Analyze logs and metrics
+        - Identify root cause before remediation
+        - Document findings
+      </implementation>
+    </principle>
+
+    <principle name="Verify Resolution">
+      <description>
+        Always confirm the issue is resolved before closing
+      </description>
+      <rationale>
+        Prevents premature closure and recurring incidents
+      </rationale>
+      <implementation>
+        - Re-run health checks after fixes
+        - Compare before/after metrics
+        - Test affected functionality
+        - Get user confirmation when appropriate
+      </implementation>
+    </principle>
+
+    <principle name="Communicate Clearly">
+      <description>
+        Keep stakeholders informed throughout the process
+      </description>
+      <rationale>
+        Builds trust and enables coordination
+      </rationale>
+      <implementation>
+        - Explain what you're doing before each step
+        - Show results clearly
+        - Highlight key findings
+        - Provide regular status updates
+      </implementation>
+    </principle>
+  </incident_management_principles>
+
+  <workflow_best_practices>
+    <practice priority="critical">
+      <name>Gather Complete Information</name>
+      <description>
+        Collect all relevant details before creating incident
+      </description>
+      <checklist>
+        <item>Clear description of the problem</item>
+        <item>When the issue started</item>
+        <item>Affected systems or services</item>
+        <item>Impact on users or business</item>
+        <item>Any error messages or symptoms</item>
+        <item>Steps to reproduce (if applicable)</item>
+      </checklist>
+    </practice>
+
+    <practice priority="high">
+      <name>Use Appropriate Urgency/Impact</name>
+      <description>
+        Set correct priority levels for incident tracking
+      </description>
+      <guidelines>
+        <urgency level="1">Critical - System down, major business impact</urgency>
+        <urgency level="2">High - Significant degradation, workaround available</urgency>
+        <urgency level="3">Medium - Minor impact, can wait for scheduled maintenance</urgency>
+        <impact level="1">Affects multiple users or critical systems</impact>
+        <impact level="2">Affects single user or non-critical system</impact>
+        <impact level="3">Minimal impact, cosmetic issues</impact>
+      </guidelines>
+      <note>These levels apply whether using ServiceNow or manual tracking</note>
+    </practice>
+
+    <practice priority="high">
+      <name>Select Right Remediation Approach</name>
+      <description>
+        Choose appropriate automation based on incident type
+      </description>
+      <mapping>
+        <incident_type type="performance">
+          <diagnostic>
+            1. Check /api/admin/metrics endpoint for server load indicators
+            2. Run health-check.yml for response times and service status
+          </diagnostic>
+          <remediation>fix-performance.yml (if artificial delay) OR infrastructure scaling (if overload)</remediation>
+          <note>Always check metrics first to determine if performance issue is due to server overload</note>
+        </incident_type>
+        <incident_type type="user_overload">
+          <diagnostic>
+            1. CRITICAL: Check /api/admin/metrics endpoint first
+               - Look for: cpuUsage, memoryUsage, requestsPerSecond, overloaded flag
+               - High values (>80%) indicate capacity issues
+            2. Run health-check.yml to confirm slow response times
+            3. Correlate metrics with performance to confirm root cause
+          </diagnostic>
+          <remediation>Terraform horizontal scaling + Nginx load balancer</remediation>
+          <critical_requirement>BOTH scaling AND load balancer are required - scaling alone is incomplete</critical_requirement>
+          <steps>
+            <step>1. Check metrics endpoint: curl -s http://localhost:5001/api/admin/metrics | jq</step>
+            <step>2. Scale backend instances using Terraform</step>
+            <step>3. Configure Nginx load balancer for traffic distribution</step>
+            <step>4. Verify load distribution across all instances</step>
+            <step>5. Re-check metrics to confirm load is normalized</step>
+          </steps>
+        </incident_type>
+        <incident_type type="deployment">
+          <diagnostic>health-check.yml</diagnostic>
+          <remediation>deploy.yml or rollback.yml</remediation>
+        </incident_type>
+        <incident_type type="configuration">
+          <diagnostic>health-check.yml</diagnostic>
+          <remediation>update-config.yml</remediation>
+        </incident_type>
+        <incident_type type="backup">
+          <diagnostic>health-check.yml</diagnostic>
+          <remediation>backup-database.yml</remediation>
+        </incident_type>
+      </mapping>
+    </practice>
+
+    <practice priority="medium">
+      <name>Handle Errors Gracefully</name>
+      <description>
+        When automation fails, have fallback approaches
+      </description>
+      <approaches>
+        <approach>Try manual commands if playbook fails</approach>
+        <approach>Check logs for detailed error information</approach>
+        <approach>Verify prerequisites (connectivity, permissions)</approach>
+        <approach>Document the issue and escalate if needed</approach>
+      </approaches>
+    </practice>
+  </workflow_best_practices>
+
+  <tool_usage_best_practices>
+    <tool name="ServiceNow MCP">
+      <best_practice>
+        Always capture and save the incident number immediately after creation
+      </best_practice>
+      <best_practice>
+        Update incidents with work notes, not just state changes
+      </best_practice>
+      <best_practice>
+        Use appropriate state transitions (New → In Progress → Resolved)
+      </best_practice>
+      <best_practice>
+        Include timestamps and metrics in work notes
+      </best_practice>
+      <best_practice priority="critical">
+        NEVER automatically proceed when ServiceNow connection fails - always present options to user
+      </best_practice>
+      <connection_failure_handling>
+        <rule>Stop immediately when connection error occurs</rule>
+        <rule>Present user with clear options using ask_followup_question</rule>
+        <rule>Explain possible causes (credentials, network, instance availability)</rule>
+        <rule>Offer to proceed with manual tracking if user chooses</rule>
+        <rule>Never assume user wants to continue without ServiceNow</rule>
+      </connection_failure_handling>
+      <manual_tracking_mode>
+        <when>User explicitly chooses to proceed without ServiceNow</when>
+        <implementation>
+          <create_local_incident_id>Format: LOCAL-INC-[timestamp]</create_local_incident_id>
+          <create_markdown_file>incident-[id].md with all incident details</create_markdown_file>
+          <document_all_actions>Append each phase's findings to the markdown file</document_all_actions>
+          <provide_summary>At closure, provide formatted summary for manual ServiceNow entry</provide_summary>
+        </implementation>
+      </manual_tracking_mode>
+      <common_pitfall>
+        Forgetting to update ServiceNow during long troubleshooting sessions
+      </common_pitfall>
+      <common_pitfall priority="critical">
+        Automatically proceeding without ServiceNow when connection fails (NEVER DO THIS)
+      </common_pitfall>
+    </tool>
+
+    <tool name="Ansible MCP">
+      <best_practice>
+        Always explain what a playbook does before running it
+      </best_practice>
+      <best_practice>
+        Review playbook output for errors or warnings
+      </best_practice>
+      <best_practice>
+        Use check mode (--check) for dry runs when appropriate
+      </best_practice>
+      <best_practice>
+        Verify inventory and connectivity before running playbooks
+      </best_practice>
+      <common_pitfall>
+        Running remediation playbooks without diagnosing first
+      </common_pitfall>
+    </tool>
+
+    <tool name="Terraform MCP">
+      <best_practice>
+        Use terraform plan before apply to preview changes
+      </best_practice>
+      <best_practice>
+        Review state before making infrastructure changes
+      </best_practice>
+      <best_practice>
+        Document infrastructure changes in ServiceNow
+      </best_practice>
+      <best_practice>
+        Have rollback plan before major changes
+      </best_practice>
+      <best_practice>
+        Always use ABSOLUTE paths for working_dir — relative paths resolve from the MCP server's process directory, not the workspace
+      </best_practice>
+      <best_practice>
+        After a timed-out apply, always run terraform_show to check if the apply actually completed before retrying
+      </best_practice>
+      <common_pitfall>
+        Making infrastructure changes without understanding impact
+      </common_pitfall>
+      <common_pitfall>
+        Using plan_file to pass raw CLI flags like -replace — plan_file only accepts a saved plan file path.
+        Use Ansible run_adhoc shell module as fallback for unsupported flags.
+      </common_pitfall>
+      <common_pitfall>
+        Retrying terraform apply when a stale state lock is present without first running force-unlock.
+        Use: ansible run_adhoc shell "cd [tf-dir] &amp;&amp; terraform force-unlock -force [LOCK_ID]"
+      </common_pitfall>
+      <common_pitfall>
+        Adding new Terraform providers (e.g., hashicorp/local) without running terraform init -upgrade first.
+        The lock file must be updated before apply will succeed.
+      </common_pitfall>
+    </tool>
+
+    <tool name="execute_command">
+      <best_practice>
+        Use for quick diagnostics and verification
+      </best_practice>
+      <best_practice>
+        Show command output to user for transparency
+      </best_practice>
+      <best_practice>
+        Use 'time' prefix to measure performance
+      </best_practice>
+      <best_practice>
+        Explain what command does before running it
+      </best_practice>
+      <example>
+        time curl -s http://localhost:5001/health | jq
+      </example>
+    </tool>
+  </tool_usage_best_practices>
+
+  <communication_best_practices>
+    <practice name="Explain Before Execute">
+      <description>Always explain what you're about to do</description>
+      <examples>
+        <good>
+          "I'll run the health check playbook to diagnose the performance issue.
+          This will check all services and measure response times."
+        </good>
+        <bad>
+          "Running health check..."
+        </bad>
+      </examples>
+    </practice>
+
+    <practice name="Show Results Clearly">
+      <description>Display outputs and highlight key information</description>
+      <techniques>
+        <technique>Quote important metrics</technique>
+        <technique>Highlight errors or warnings</technique>
+        <technique>Summarize complex outputs</technique>
+        <technique>Compare before/after states</technique>
+      </techniques>
+    </practice>
+
+    <practice name="Provide Context">
+      <description>Help user understand why actions are needed</description>
+      <examples>
+        <good>
+          "The health check shows the backend is responding slowly (3.2s).
+          This indicates a performance bottleneck that needs investigation."
+        </good>
+        <bad>
+          "Backend is slow."
+        </bad>
+      </examples>
+    </practice>
+
+    <practice name="Ask for Confirmation">
+      <description>Get approval before potentially disruptive actions</description>
+      <when_to_ask>
+        <situation>Before rolling back deployments</situation>
+        <situation>Before making infrastructure changes</situation>
+        <situation>Before restarting services</situation>
+        <situation>Before deleting or modifying data</situation>
+      </when_to_ask>
+    </practice>
+  </communication_best_practices>
+
+  <incident_lifecycle_best_practices>
+    <stage name="Creation">
+      <best_practice>Gather complete information before creating incident</best_practice>
+      <best_practice>Set appropriate urgency and impact levels</best_practice>
+      <best_practice>Include clear, descriptive short description</best_practice>
+      <best_practice>Add detailed description with symptoms and context</best_practice>
+    </stage>
+
+    <stage name="Diagnosis">
+      <best_practice>Start with least invasive diagnostics</best_practice>
+      <best_practice>Run health checks before detailed investigation</best_practice>
+      <best_practice>Check logs and metrics systematically</best_practice>
+      <best_practice>Document findings in ServiceNow work notes</best_practice>
+    </stage>
+
+    <stage name="Remediation">
+      <best_practice>Explain the fix before applying it</best_practice>
+      <best_practice>Use automation (playbooks) when available</best_practice>
+      <best_practice>For user overload: ALWAYS include load balancer with scaling</best_practice>
+      <best_practice>Monitor execution for errors</best_practice>
+      <best_practice>Have rollback plan ready</best_practice>
+    </stage>
+
+    <stage name="Verification">
+      <best_practice>Re-run same diagnostics used initially</best_practice>
+      <best_practice>Compare metrics before and after</best_practice>
+      <best_practice>Test affected functionality</best_practice>
+      <best_practice>Document verification results</best_practice>
+    </stage>
+
+    <stage name="Closure">
+      <best_practice>Provide complete resolution summary</best_practice>
+      <best_practice>Include root cause and actions taken</best_practice>
+      <best_practice>Note any follow-up actions needed</best_practice>
+      <best_practice>Update incident state to Resolved</best_practice>
+    </stage>
+  </incident_lifecycle_best_practices>
+
+  <common_pitfalls>
+    <pitfall>
+      <issue>Skipping diagnosis and jumping to fixes</issue>
+      <consequence>May fix wrong problem or make it worse</consequence>
+      <solution>Always diagnose first, even if cause seems obvious</solution>
+    </pitfall>
+
+    <pitfall>
+      <issue>Not documenting in ServiceNow</issue>
+      <consequence>Lost audit trail, difficult to learn from incidents</consequence>
+      <solution>Update ServiceNow after each major step</solution>
+    </pitfall>
+
+    <pitfall>
+      <issue>Closing incidents without verification</issue>
+      <consequence>Recurring incidents, user dissatisfaction</consequence>
+      <solution>Always verify resolution before closing</solution>
+    </pitfall>
+
+    <pitfall>
+      <issue>Using wrong playbook for incident type</issue>
+      <consequence>Ineffective remediation, wasted time</consequence>
+      <solution>Match playbook to incident type, check available playbooks first</solution>
+    </pitfall>
+
+    <pitfall>
+      <issue>Not explaining actions to user</issue>
+      <consequence>User confusion, lack of trust</consequence>
+      <solution>Explain what you're doing and why before each step</solution>
+    </pitfall>
+
+    <pitfall>
+      <issue>Scaling backend without load balancer for user overload</issue>
+      <consequence>Traffic not distributed, overload persists on single instance</consequence>
+      <solution>ALWAYS add load balancer when scaling - both components are required</solution>
+    </pitfall>
+  </common_pitfalls>
+
+  <success_metrics>
+    <metric>Incident created with complete information</metric>
+    <metric>Root cause identified through systematic diagnosis</metric>
+    <metric>Appropriate automation used for remediation</metric>
+    <metric>Resolution verified with objective metrics</metric>
+    <metric>Complete audit trail in ServiceNow</metric>
+    <metric>User informed and satisfied with resolution</metric>
+  </success_metrics>
+
+  <continuous_improvement>
+    <practice>
+      Review closed incidents to identify patterns
+    </practice>
+    <practice>
+      Update playbooks based on lessons learned
+    </practice>
+    <practice>
+      Document new incident types and solutions
+    </practice>
+    <practice>
+      Share knowledge with team through ServiceNow notes
+    </practice>
+  </continuous_improvement>
+</sdlc_incident_management_best_practices>
+
+<!-- Made with Bob -->

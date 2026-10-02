@@ -1,0 +1,838 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdlc_incident_management_workflow>
+  <overview>
+    This mode helps manage application incidents through their complete lifecycle,
+    from initial reporting through diagnosis, planning, remediation, verification, and closure.
+    The workflow adapts based on incident type (performance, deployment, configuration, etc.).
+    It works with any application in this repository (bank-app, health-app, or others) —
+    always detect the active application from context or by listing project structure before proceeding.
+  </overview>
+
+  <todo_list_tracking>
+    <when_to_use>
+      Create a todo list at the start of incident management to track progress through the workflow phases.
+      The todo list provides visual feedback to the user about what has been completed and what remains.
+    </when_to_use>
+    
+    <initial_creation>
+      <timing>After understanding the incident type and before starting diagnosis</timing>
+      <tool>update_todo_list</tool>
+      <structure>
+        Create a checklist with the 7 main phases:
+        1. [ ] Create and track incident in ServiceNow
+        2. [ ] Assess incident type and scope
+        3. [ ] Diagnose root cause
+        4. [ ] Plan resolution approach
+        5. [ ] Apply remediation
+        6. [ ] Verify resolution
+        7. [ ] Close incident and document
+      </structure>
+    </initial_creation>
+    
+    <updating_progress>
+      <when>After completing each major phase</when>
+      <how>
+        - Mark the completed phase as [x]
+        - Mark the current phase as [-] (in progress)
+        - Keep remaining phases as [ ] (pending)
+      </how>
+      <example>
+        After completing diagnosis and planning resolution:
+        [x] Create and track incident in ServiceNow
+        [x] Assess incident type and scope
+        [x] Diagnose root cause
+        [x] Plan resolution approach
+        [-] Apply remediation
+        [ ] Verify resolution
+        [ ] Close incident and document
+      </example>
+    </updating_progress>
+    
+    <dynamic_additions>
+      <when>When discovering additional steps during complex incidents</when>
+      <example>
+        For user overload incidents requiring both scaling and load balancing:
+        [x] Create and track incident in ServiceNow
+        [x] Assess incident type and scope
+        [x] Diagnose root cause (server overload detected)
+        [x] Plan resolution approach (scale + load balance)
+        [-] Apply remediation
+            [x] Scale backend instances with Terraform
+            [-] Configure Nginx load balancer
+            [ ] Verify traffic distribution
+        [ ] Verify resolution
+        [ ] Close incident and document
+      </example>
+    </dynamic_additions>
+    
+    <best_practices>
+      <practice>Update the todo list after each significant action, not just at phase boundaries</practice>
+      <practice>Use descriptive task names that reflect the specific incident context</practice>
+      <practice>Add sub-tasks for complex remediation steps to show detailed progress</practice>
+      <practice>Keep the list concise - typically 6-10 main items maximum</practice>
+      <practice>Remove or consolidate tasks if the workflow simplifies</practice>
+    </best_practices>
+  </todo_list_tracking>
+
+  <prerequisites>
+    <check>Application infrastructure deployed and accessible</check>
+    <check>ServiceNow credentials configured in .env</check>
+    <check>Ansible and Terraform MCP servers active</check>
+    <check>Appropriate playbooks available for incident type</check>
+  </prerequisites>
+
+  <incident_types>
+    <type name="performance">
+      <description>Application experiencing slow response times or degraded performance</description>
+      <typical_playbooks>health-check.yml, fix-performance.yml</typical_playbooks>
+    </type>
+    <type name="user_overload">
+      <description>Backend overloaded with too many users or high traffic volume</description>
+      <typical_playbooks>health-check.yml</typical_playbooks>
+      <remediation_approach>
+        1. Scale backend horizontally using Terraform (multiple instances)
+        2. Add Nginx load balancer for traffic distribution
+        3. Verify load distribution across instances
+      </remediation_approach>
+      <critical_note>Scaling alone is insufficient - MUST include load balancer for proper traffic distribution</critical_note>
+    </type>
+    <type name="deployment">
+      <description>Deployment failures or need for rollback</description>
+      <typical_playbooks>deploy.yml, rollback.yml, health-check.yml</typical_playbooks>
+    </type>
+    <type name="configuration">
+      <description>Configuration changes or misconfigurations</description>
+      <typical_playbooks>update-config.yml, health-check.yml</typical_playbooks>
+    </type>
+    <type name="backup_restore">
+      <description>Data backup or restore operations</description>
+      <typical_playbooks>backup-database.yml, health-check.yml</typical_playbooks>
+    </type>
+  </incident_types>
+
+  <general_workflow>
+    <phase number="1" name="Incident Creation">
+      <title>Create and Track Incident</title>
+      <objective>Log the issue in ServiceNow for tracking and coordination</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Gather incident details from user</action>
+          <information_needed>
+            <item>Short description of the issue</item>
+            <item>Detailed description with symptoms</item>
+            <item>Urgency level (1=High, 2=Medium, 3=Low)</item>
+            <item>Impact level (1=High, 2=Medium, 3=Low)</item>
+            <item>Affected systems or services</item>
+          </information_needed>
+        </step>
+        
+        <step number="2">
+          <action>Attempt to create incident using ServiceNow MCP tool</action>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>create_incident</tool_name>
+          <note>Use information gathered from user to populate incident fields</note>
+          
+          <error_handling>
+            <on_connection_failure>
+              <action>DO NOT automatically proceed</action>
+              <action>Present user with options using ask_followup_question</action>
+              <options>
+                <option priority="1">
+                  <description>Check and fix ServiceNow configuration</description>
+                  <details>Review .env file for correct SERVICENOW_INSTANCE, SERVICENOW_USERNAME, and SERVICENOW_PASSWORD</details>
+                </option>
+                <option priority="2">
+                  <description>Proceed without ServiceNow tracking</description>
+                  <details>Continue incident management with manual tracking and documentation</details>
+                </option>
+                <option priority="3">
+                  <description>Retry ServiceNow connection</description>
+                  <details>Attempt to create incident again after user confirms configuration</details>
+                </option>
+                <option priority="4">
+                  <description>Cancel incident management</description>
+                  <details>Stop the workflow and allow user to resolve ServiceNow issues first</details>
+                </option>
+              </options>
+              <example_prompt>
+                I encountered an error connecting to ServiceNow. This could be due to:
+                - Incorrect credentials in .env file
+                - ServiceNow instance not accessible
+                - Network connectivity issues
+                
+                How would you like to proceed?
+              </example_prompt>
+            </on_connection_failure>
+          </error_handling>
+        </step>
+        
+        <step number="3">
+          <action>Record incident number for tracking (if ServiceNow succeeded)</action>
+          <note>Save the incident number (e.g., INC0010001) for later updates</note>
+          <alternative>If proceeding without ServiceNow, create local tracking identifier</alternative>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Incident created successfully in ServiceNow</criterion>
+        <criterion>Incident number obtained and recorded</criterion>
+        <criterion>All relevant details captured</criterion>
+      </success_criteria>
+    </phase>
+
+    <phase number="2" name="Initial Assessment">
+      <title>Assess Incident Type and Scope</title>
+      <objective>Understand the nature and scope of the incident</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Determine incident type</action>
+          <categories>
+            <category>Performance issue</category>
+            <category>Deployment failure</category>
+            <category>Configuration problem</category>
+            <category>Backup/restore need</category>
+            <category>Other infrastructure issue</category>
+          </categories>
+        </step>
+        
+        <step number="2">
+          <action>Identify the active application and affected components</action>
+          <tool>list_files</tool>
+          <note>
+            List the project root to identify which application is involved (bank-app, health-app, etc.).
+            Then determine the app-specific paths: [app-dir]/terraform, [app-dir]/ansible, etc.
+            All subsequent file paths and tool parameters should use the detected app directory.
+          </note>
+        </step>
+        
+        <step number="3">
+          <action>Plan diagnostic approach</action>
+          <note>Based on incident type, determine which tools and playbooks to use</note>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Incident type identified</criterion>
+        <criterion>Affected components known</criterion>
+        <criterion>Diagnostic plan established</criterion>
+      </success_criteria>
+    </phase>
+
+    <phase number="3" name="Diagnosis">
+      <title>Diagnose Root Cause</title>
+      <objective>Use automated tools to identify the root cause of the incident</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Check server metrics endpoint (for performance/overload issues)</action>
+          <tool>execute_command</tool>
+          <command>curl -s http://localhost:5001/api/admin/metrics | jq</command>
+          <when_to_use>
+            When incident involves performance degradation, slow response times, or suspected server overload
+          </when_to_use>
+          <what_to_look_for>
+            <metric>cpuUsage - High values (>80%) indicate CPU bottleneck</metric>
+            <metric>memoryUsage - High values (>80%) indicate memory pressure</metric>
+            <metric>requestsPerSecond - High values may exceed capacity</metric>
+            <metric>activeConnections - High values indicate heavy load</metric>
+            <metric>overloaded - Boolean flag indicating server is overloaded</metric>
+          </what_to_look_for>
+          <interpretation>
+            If overloaded=true or CPU/Memory >80%, this indicates infrastructure scaling is needed.
+            Combined with slow response times, this confirms under-provisioned infrastructure.
+          </interpretation>
+          <note>This endpoint provides real-time server load metrics crucial for diagnosing capacity issues</note>
+        </step>
+        
+        <step number="2">
+          <action>Run appropriate health check playbook</action>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <note>Use health-check.yml or similar diagnostic playbook</note>
+        </step>
+        
+        <step number="3">
+          <action>Analyze diagnostic results</action>
+          <look_for>
+            <item>Service status (running/stopped)</item>
+            <item>Response times and performance metrics</item>
+            <item>Error messages or warnings</item>
+            <item>Resource utilization (from metrics endpoint)</item>
+            <item>Configuration issues</item>
+            <item>Server overload indicators (CPU, memory, request rate)</item>
+          </look_for>
+        </step>
+        
+        <step number="4">
+          <action>Identify root cause</action>
+          <note>Explain findings clearly to the user</note>
+          <correlation>
+            If metrics show overload AND health check shows slow response times,
+            root cause is likely under-provisioned infrastructure requiring scaling.
+          </correlation>
+        </step>
+        
+        <step number="5">
+          <action>Update incident tracking with findings</action>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>update_incident</tool_name>
+          <note>Add work notes documenting the diagnosis, including metrics data</note>
+          <manual_tracking_alternative>
+            If proceeding without ServiceNow, append findings to local incident markdown file
+          </manual_tracking_alternative>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Diagnostic playbook executed successfully</criterion>
+        <criterion>Root cause identified</criterion>
+        <criterion>Findings documented in ServiceNow</criterion>
+      </success_criteria>
+    </phase>
+
+    <phase number="4" name="Resolution Planning">
+      <title>Plan Resolution Approach</title>
+      <objective>Develop a clear remediation strategy based on the diagnosed root cause</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Review diagnosis findings</action>
+          <note>Summarize the root cause and its impact</note>
+        </step>
+        
+        <step number="2">
+          <action>Identify available remediation options</action>
+          <options>
+            <option type="performance">Ansible playbook (fix-performance.yml)</option>
+            <option type="user_overload">Infrastructure scaling + load balancing</option>
+            <option type="deployment">Deployment or rollback playbook</option>
+            <option type="configuration">Configuration update playbook</option>
+            <option type="backup">Database backup/restore playbook</option>
+          </options>
+        </step>
+        
+        <step number="3">
+          <action>Select optimal remediation approach</action>
+          <considerations>
+            <consideration>Severity and urgency of incident</consideration>
+            <consideration>Complexity of the fix</consideration>
+            <consideration>Risk of the remediation</consideration>
+            <consideration>Available tools and automation</consideration>
+            <consideration>Potential for rollback if needed</consideration>
+          </considerations>
+        </step>
+        
+        <step number="4">
+          <action>Identify ALL affected configuration files</action>
+          <critical_rule>BEFORE making any changes, review ALL files that will be affected by the remediation</critical_rule>
+          <rationale>
+            Identifying all affected files upfront prevents:
+            - Multiple apply cycles due to missed configurations
+            - Container restart loops from incomplete changes
+            - Wasted time debugging issues that could have been prevented
+            - Inefficient workflow requiring rework
+          </rationale>
+          <common_files_to_check>
+            <file_category name="infrastructure">
+              <file>Terraform main.tf - Infrastructure definitions</file>
+              <file>Terraform variables and tfvars - Configuration values</file>
+              <file>Docker compose files - Container orchestration</file>
+            </file_category>
+            <file_category name="application_config">
+              <file>Frontend nginx.conf - Proxy and routing configuration</file>
+              <file>Backend configuration files - Service endpoints</file>
+              <file>Environment files (.env) - Runtime configuration</file>
+            </file_category>
+            <file_category name="load_balancing">
+              <file>Load balancer configuration (nginx-lb.conf, haproxy.cfg, etc.)</file>
+              <file>Upstream server definitions</file>
+              <file>Health check endpoints</file>
+            </file_category>
+          </common_files_to_check>
+          <user_overload_specific>
+            For user overload scenarios requiring scaling + load balancing, MUST review:
+            1. Terraform main.tf - Backend scaling and load balancer resources
+            2. terraform.tfvars - Backend replica count
+            3. nginx-lb.conf - Load balancer upstream configuration
+            4. Frontend nginx.conf - API proxy endpoint (CRITICAL: must point to load-balancer, not backend)
+            5. Backend configuration - Any hardcoded service discovery
+          </user_overload_specific>
+          <verification_method>
+            <action>Use read_file tool to examine each identified configuration file</action>
+            <action>Look for hardcoded service names, endpoints, or references that will break</action>
+            <action>Document all required changes before proceeding to implementation</action>
+          </verification_method>
+        </step>
+        
+        <step number="5">
+          <action>Create comprehensive step-by-step remediation plan</action>
+          <note>Break down complex fixes into clear, sequential steps with ALL configuration changes identified</note>
+          <special_case type="user_overload">
+            For user overload scenarios, plan must include BOTH:
+            1. Horizontal scaling (Terraform to add backend instances)
+            2. Load balancer setup (Nginx configuration and deployment)
+            3. ALL configuration file updates (frontend, backend, load balancer)
+            Explain why both scaling AND load balancing are necessary for proper traffic distribution
+          </special_case>
+          <plan_structure>
+            <section>Configuration Changes Required (list ALL files to be modified)</section>
+            <section>Infrastructure Changes (Terraform, Docker, etc.)</section>
+            <section>Application Changes (code, configs, etc.)</section>
+            <section>Verification Steps (how to confirm each change)</section>
+          </plan_structure>
+        </step>
+        
+        <step number="5">
+          <action>Explain plan to user</action>
+          <include>
+            <item>What will be done</item>
+            <item>Why this approach was chosen</item>
+            <item>Expected outcome</item>
+            <item>Estimated time</item>
+            <item>Any risks or considerations</item>
+          </include>
+        </step>
+        
+        <step number="6">
+          <action>Update todo list with remediation sub-steps</action>
+          <tool>update_todo_list</tool>
+          <note>Add specific remediation tasks to show detailed progress</note>
+        </step>
+        
+        <step number="7">
+          <action>Document plan in incident tracking</action>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>update_incident</tool_name>
+          <note>Add work notes with the remediation plan</note>
+          <manual_tracking_alternative>
+            If proceeding without ServiceNow, append plan to local incident markdown file
+          </manual_tracking_alternative>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Clear remediation strategy defined</criterion>
+        <criterion>All necessary steps identified</criterion>
+        <criterion>Plan explained to and understood by user</criterion>
+        <criterion>Plan documented in ServiceNow</criterion>
+        <criterion>Todo list updated with remediation steps</criterion>
+      </success_criteria>
+    </phase>
+
+    <phase number="5" name="Remediation">
+      <title>Apply Fix</title>
+      <objective>Execute the planned remediation to resolve the incident</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Select appropriate remediation approach</action>
+          <options>
+            <option type="performance">fix-performance.yml playbook</option>
+            <option type="user_overload">Terraform scaling + Nginx load balancer (BOTH required)</option>
+            <option type="deployment">deploy.yml or rollback.yml playbook</option>
+            <option type="configuration">update-config.yml playbook</option>
+            <option type="backup">backup-database.yml playbook</option>
+          </options>
+        </step>
+        
+        <step number="2">
+          <action>Explain the fix to the user</action>
+          <note>Describe what will be done and expected outcome</note>
+          <special_case type="user_overload">
+            For user overload, explain that BOTH horizontal scaling AND load balancer are required:
+            - Scaling provides additional capacity
+            - Load balancer distributes traffic across instances
+            - Without load balancer, traffic won't be distributed automatically
+          </special_case>
+        </step>
+        
+        <step number="3">
+          <action>Execute remediation</action>
+          <standard_approach>
+            <tool>use_mcp_tool</tool>
+            <server>ansible</server>
+            <tool_name>run_playbook</tool_name>
+          </standard_approach>
+          <user_overload_approach>
+            <substep number="3a">
+              <action>Scale backend using Terraform</action>
+              <details>
+                - Modify Terraform configuration for multiple backend instances
+                - Create terraform.tfvars with backend_replicas variable
+                - Apply Terraform changes to deploy scaled infrastructure
+              </details>
+            </substep>
+            <substep number="3b">
+              <action>Add Nginx load balancer configuration</action>
+              <details>
+                - Create nginx-lb.conf with upstream backend pool
+                - Add load balancer container to Terraform configuration
+                - Configure load balancing algorithm (least_conn recommended)
+                - Set up health checks for backend instances
+              </details>
+            </substep>
+            <substep number="3c">
+              <action>Apply complete infrastructure changes</action>
+              <details>
+                - Run terraform apply to deploy load balancer
+                - Verify all backend instances are in load balancer pool
+                - Update frontend to use load balancer endpoint
+              </details>
+            </substep>
+          </user_overload_approach>
+        </step>
+        
+        <step number="4">
+          <action>Rebuild images and restart containers after configuration changes</action>
+          <critical_rule>Configuration file changes require REBUILDING Docker images, not just restarting containers</critical_rule>
+          <rationale>
+            Docker images are built with configuration files baked in at build time.
+            If you modify a config file (like nginx.conf) and only restart the container,
+            it will still use the OLD configuration from when the image was built.
+            
+            After Terraform modifies infrastructure AND configuration files are updated:
+            - Images must be rebuilt to include new configuration files
+            - Containers must be recreated from the new images
+            - This ensures all configuration changes are actually applied
+          </rationale>
+          <decision_tree>
+            <condition>If ONLY infrastructure changed (scaling, networking) with NO config file changes</condition>
+            <action>Simple container restart is sufficient</action>
+            <implementation>
+              <tool>execute_command</tool>
+              <command>docker restart [container-names]</command>
+            </implementation>
+            
+            <condition>If configuration files were modified (nginx.conf, app configs, etc.)</condition>
+            <action>MUST rebuild affected images using Terraform</action>
+            <implementation>
+              <tool>use_mcp_tool (Ansible run_adhoc as shell — terraform_apply does NOT support -replace via parameters)</tool>
+              <server>ansible</server>
+              <tool_name>run_adhoc</tool_name>
+              <parameters>
+                <hosts>localhost</hosts>
+                <module>shell</module>
+                <args>cd [ABSOLUTE-app-dir]/terraform &amp;&amp; terraform apply -auto-approve -replace="docker_image.frontend"</args>
+                <inventory>[ABSOLUTE path to inventory/hosts.yml]</inventory>
+              </parameters>
+              <note>
+                The terraform_apply plan_file parameter only accepts a saved plan file path — not raw CLI flags.
+                Use Ansible shell as the fallback for -replace and other unsupported flags.
+                Docker image builds may exceed MCP timeout. Run terraform_show afterward to confirm completion.
+              </note>
+            </implementation>
+            
+            <condition>If BOTH infrastructure AND config files changed (common in scaling scenarios)</condition>
+            <action>Two-step process required</action>
+            <substep number="1">
+              <description>First apply: Deploy infrastructure changes</description>
+              <command>terraform apply -auto-approve</command>
+              <result>Creates new containers, networks, load balancers</result>
+            </substep>
+            <substep number="2">
+              <description>Second apply: Rebuild images with updated configs</description>
+              <command>terraform apply -auto-approve -replace="docker_image.frontend" -replace="docker_image.backend"</command>
+              <result>Rebuilds images with new config files, recreates containers</result>
+            </substep>
+          </decision_tree>
+          <common_config_files_requiring_rebuild>
+            <file>frontend/nginx.conf - Frontend proxy configuration</file>
+            <file>backend/.env or config files - Backend service configuration</file>
+            <file>Any file copied into Docker image during build</file>
+          </common_config_files_requiring_rebuild>
+          <verification>
+            <action>Check container logs for configuration errors</action>
+            <command>docker logs [container-name] --tail 50</command>
+            <look_for>
+              <error>host not found in upstream - indicates config still references old hostnames</error>
+              <error>connection refused - indicates service discovery issues</error>
+              <error>nginx configuration errors - indicates syntax or reference problems</error>
+            </look_for>
+            <action>If errors found, rebuild the affected image</action>
+          </verification>
+          <timing>
+            <when>After all configuration file changes are complete</when>
+            <when>After initial terraform apply for infrastructure</when>
+            <when>Before final verification phase</when>
+          </timing>
+        </step>
+        
+        <step number="5">
+          <action>Monitor execution</action>
+          <note>Watch for errors or unexpected results</note>
+          <user_overload_verification>
+            - Verify all backend instances are running
+            - Confirm load balancer is distributing traffic
+            - Check that each backend instance receives requests
+          </user_overload_verification>
+        </step>
+        
+        <step number="5">
+          <action>Update incident tracking with remediation actions</action>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>update_incident</tool_name>
+          <note>Document what was done to fix the issue</note>
+          <manual_tracking_alternative>
+            If proceeding without ServiceNow, append remediation actions to local incident markdown file
+          </manual_tracking_alternative>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Remediation executed successfully</criterion>
+        <criterion>No errors during execution</criterion>
+        <criterion>Actions documented in ServiceNow</criterion>
+        <user_overload_specific>
+          <criterion>Backend scaled to multiple instances</criterion>
+          <criterion>Load balancer deployed and configured</criterion>
+          <criterion>Traffic distribution verified across all instances</criterion>
+        </user_overload_specific>
+      </success_criteria>
+    </phase>
+
+    <phase number="6" name="Verification">
+      <title>Verify Resolution</title>
+      <objective>Confirm that the incident has been resolved</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Run health check again</action>
+          <tool>use_mcp_tool</tool>
+          <server>ansible</server>
+          <tool_name>run_playbook</tool_name>
+          <note>Use same diagnostic playbook as in diagnosis phase</note>
+        </step>
+        
+        <step number="2">
+          <action>Compare before and after metrics</action>
+          <comparisons>
+            <comparison>Response times</comparison>
+            <comparison>Service status</comparison>
+            <comparison>Error rates</comparison>
+            <comparison>Resource utilization</comparison>
+          </comparisons>
+        </step>
+        
+        <step number="3">
+          <action>Confirm resolution with user</action>
+          <note>Clearly state whether the issue is resolved</note>
+        </step>
+        
+        <step number="4">
+          <action>Document verification results</action>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>update_incident</tool_name>
+          <note>Add work notes with verification metrics</note>
+          <manual_tracking_alternative>
+            If proceeding without ServiceNow, append verification results to local incident markdown file
+          </manual_tracking_alternative>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Health check shows normal operation</criterion>
+        <criterion>Metrics improved or returned to normal</criterion>
+        <criterion>No remaining symptoms</criterion>
+        <criterion>Verification documented</criterion>
+      </success_criteria>
+    </phase>
+
+    <phase number="7" name="Closure">
+      <title>Close Incident</title>
+      <objective>Document resolution and close the incident</objective>
+      
+      <steps>
+        <step number="1">
+          <action>Prepare resolution summary</action>
+          <include>
+            <item>Root cause identified</item>
+            <item>Actions taken to resolve</item>
+            <item>Verification results</item>
+            <item>Any follow-up actions needed</item>
+          </include>
+        </step>
+        
+        <step number="2">
+          <action>Update incident tracking to resolved state</action>
+          <tool>use_mcp_tool</tool>
+          <server>servicenow</server>
+          <tool_name>update_incident</tool_name>
+          <parameters>
+            <state>6</state>
+            <close_code>Solution provided (REQUIRED for state=6)</close_code>
+            <close_notes>Root cause and resolution summary (REQUIRED for state=6)</close_notes>
+            <work_notes>Detailed technical work notes</work_notes>
+          </parameters>
+          <critical_rule>
+            state=6 requires BOTH close_code AND close_notes in the same call.
+            Omitting either field causes a 403 "Data Policy Exception" from ServiceNow.
+            Do not split into two calls — include all three fields together.
+          </critical_rule>
+          <manual_tracking_alternative>
+            If proceeding without ServiceNow:
+            - Mark local incident file as RESOLVED
+            - Include complete resolution summary
+            - Provide formatted summary for manual ServiceNow entry
+          </manual_tracking_alternative>
+        </step>
+        
+        <step number="3">
+          <action>Provide summary to user</action>
+          <note>Recap the complete incident lifecycle and resolution</note>
+          <manual_tracking_note>
+            If manual tracking was used, provide complete incident report formatted for easy ServiceNow entry
+          </manual_tracking_note>
+        </step>
+      </steps>
+      
+      <success_criteria>
+        <criterion>Incident marked as resolved in ServiceNow</criterion>
+        <criterion>Complete resolution documented</criterion>
+        <criterion>User informed of closure</criterion>
+      </success_criteria>
+    </phase>
+  </general_workflow>
+
+  <adaptive_workflow_notes>
+    <note>
+      The workflow adapts based on incident type. Not all phases may be needed for every incident.
+    </note>
+    <note>
+      For simple incidents, diagnosis and remediation may be combined.
+    </note>
+    <note>
+      For complex incidents, multiple diagnosis-remediation-verification cycles may be needed.
+    </note>
+    <note>
+      Always maintain ServiceNow updates throughout the process for tracking and audit purposes.
+    </note>
+  </adaptive_workflow_notes>
+
+  <error_handling>
+    <scenario name="ServiceNow unavailable">
+      <detection>MCP tool returns connection error during incident creation or updates</detection>
+      <critical_rule>NEVER automatically proceed without user input</critical_rule>
+      <resolution>
+        <step number="1">
+          <action>Stop and present options to user</action>
+          <tool>ask_followup_question</tool>
+          <question_template>
+            I encountered an error connecting to ServiceNow: [error details]
+            
+            This could be due to:
+            - Incorrect credentials in .env file (SERVICENOW_INSTANCE, SERVICENOW_USERNAME, SERVICENOW_PASSWORD)
+            - ServiceNow instance not accessible
+            - Network connectivity issues
+            - MCP server not running properly
+            
+            How would you like to proceed?
+          </question_template>
+          <suggestions>
+            <suggest>Check and fix ServiceNow configuration in .env file</suggest>
+            <suggest>Proceed without ServiceNow tracking (manual documentation)</suggest>
+            <suggest>Retry ServiceNow connection after fixing configuration</suggest>
+            <suggest>Cancel and resolve ServiceNow issues first</suggest>
+          </suggestions>
+        </step>
+        <step number="2">
+          <action>Based on user choice, take appropriate action</action>
+          <choice name="fix_configuration">
+            <action>Guide user to check .env file</action>
+            <action>Verify SERVICENOW_INSTANCE format (e.g., dev12345.service-now.com)</action>
+            <action>Confirm credentials are correct</action>
+            <action>Retry connection after fixes</action>
+          </choice>
+          <choice name="proceed_without">
+            <action>Continue incident management workflow</action>
+            <action>Use local tracking (create incident ID like LOCAL-INC-001)</action>
+            <action>Document all actions in markdown notes</action>
+            <action>Skip all ServiceNow update steps</action>
+            <action>Provide summary at end for manual ServiceNow entry</action>
+          </choice>
+          <choice name="retry">
+            <action>Attempt ServiceNow connection again</action>
+            <action>If fails again, present options once more</action>
+          </choice>
+          <choice name="cancel">
+            <action>Stop incident management workflow</action>
+            <action>Provide guidance on fixing ServiceNow connection</action>
+            <action>User can restart when ready</action>
+          </choice>
+        </step>
+      </resolution>
+      <manual_tracking_mode>
+        <when>User chooses to proceed without ServiceNow</when>
+        <implementation>
+          <create_local_id>Generate incident ID: LOCAL-INC-[timestamp]</create_local_id>
+          <documentation>Create markdown file: incident-[id].md with all details</documentation>
+          <workflow_adaptation>Skip all use_mcp_tool calls to ServiceNow</workflow_adaptation>
+          <final_summary>Provide complete incident report for manual ServiceNow entry</final_summary>
+        </implementation>
+      </manual_tracking_mode>
+    </scenario>
+    
+    <scenario name="Ansible playbook fails">
+      <detection>Playbook execution returns error</detection>
+      <resolution>
+        1. Review error message and logs
+        2. Check prerequisites (inventory, connectivity, permissions)
+        3. Try manual commands if playbook unavailable
+        4. Document issue and escalate if needed
+      </resolution>
+    </scenario>
+    
+    <scenario name="Root cause unclear">
+      <detection>Diagnostic results inconclusive</detection>
+      <resolution>
+        1. Run additional diagnostic commands
+        2. Check logs and metrics
+        3. Consult documentation or knowledge base
+        4. Escalate to subject matter expert if needed
+      </resolution>
+    </scenario>
+    
+    <scenario name="Fix doesn't resolve issue">
+      <detection>Verification shows problem persists</detection>
+      <resolution>
+        1. Re-run diagnosis to check current state
+        2. Consider alternative root causes
+        3. Try different remediation approach
+        4. Document attempts and escalate if needed
+      </resolution>
+    </scenario>
+  </error_handling>
+
+  <communication_guidelines>
+    <guideline>
+      Always explain what you're doing before executing each phase
+    </guideline>
+    <guideline>
+      Show the results of each step clearly
+    </guideline>
+    <guideline>
+      Highlight key metrics and findings
+    </guideline>
+    <guideline>
+      Keep the user informed of progress
+    </guideline>
+    <guideline>
+      Ask for confirmation before major actions (like rollbacks)
+    </guideline>
+    <guideline>
+      Document everything in ServiceNow for audit trail (or in local markdown if ServiceNow unavailable)
+    </guideline>
+    <guideline>
+      Never automatically proceed when ServiceNow connection fails - always ask user how to proceed
+    </guideline>
+  </communication_guidelines>
+</sdlc_incident_management_workflow>
+
+<!-- Made with Bob -->

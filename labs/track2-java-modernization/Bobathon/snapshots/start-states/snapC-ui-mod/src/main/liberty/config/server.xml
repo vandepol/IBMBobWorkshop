@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--Updated for Jakarta EE 10 compatibility with Java 21-->
+<server description="Jakarta EE 10 compatible server configuration">
+    <featureManager>
+        <!--Jakarta EE 10 Web Profile features-->
+        <feature>jakartaee-10.0</feature>
+        <!--Alternatively, use individual features for more granular control:
+        <feature>servlet-6.0</feature>
+        <feature>pages-3.1</feature>
+        <feature>jdbc-4.3</feature>
+        -->
+        <!--Metrics support-->
+        <feature>mpMetrics-5.1</feature>
+    </featureManager>
+    
+    <!-- HTTP Endpoint Configuration -->
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="9081"
+                  httpsPort="9443"
+                  host="*" />
+    
+    <application id="simple-pharmacy.war" location="simple-pharmacy.war" name="simple-pharmacy.war" type="war"/>
+    <applicationManager autoExpand="true"/>
+</server>

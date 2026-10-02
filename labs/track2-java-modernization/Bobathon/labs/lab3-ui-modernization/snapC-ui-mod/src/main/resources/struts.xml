@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+    <!-- Development mode for better error messages -->
+    <constant name="struts.devMode" value="true" />
+    <constant name="struts.ui.theme" value="simple" />
+    <constant name="struts.convention.result.path" value="/WEB-INF/content/" />
+    
+    <package name="pharmacy" extends="struts-default">
+        
+        <!-- Dashboard Actions -->
+        <action name="dashboard" class="com.pharmacy.action.DashboardAction">
+            <result name="success">/WEB-INF/content/dashboard.jsp</result>
+        </action>
+        
+        <!-- Prescription Actions -->
+        <action name="prescription-list" class="com.pharmacy.action.PrescriptionAction" method="list">
+            <result name="success">/WEB-INF/content/prescription-list.jsp</result>
+        </action>
+        
+        <action name="prescription-view" class="com.pharmacy.action.PrescriptionAction" method="view">
+            <result name="success">/WEB-INF/content/prescription-view.jsp</result>
+            <result name="error">/WEB-INF/content/prescription-list.jsp</result>
+        </action>
+        
+        <action name="prescription-create" class="com.pharmacy.action.PrescriptionAction" method="create">
+            <result name="success">/WEB-INF/content/prescription-create.jsp</result>
+        </action>
+        
+        <action name="prescription-save" class="com.pharmacy.action.PrescriptionAction" method="save">
+            <result name="success" type="redirect">prescription-list</result>
+            <result name="error">/WEB-INF/content/prescription-create.jsp</result>
+        </action>
+        
+        <action name="prescription-validate" class="com.pharmacy.action.PrescriptionAction" method="validatePrescription">
+            <result name="success" type="redirect">prescription-list</result>
+            <result name="error" type="redirect">prescription-list</result>
+        </action>
+        
+        <!-- Order Actions -->
+        <action name="order-list" class="com.pharmacy.action.OrderAction" method="list">
+            <result name="success">/WEB-INF/content/order-list.jsp</result>
+        </action>
+        
+        <action name="order-view" class="com.pharmacy.action.OrderAction" method="view">
+            <result name="success">/WEB-INF/content/order-view.jsp</result>
+            <result name="error">/WEB-INF/content/order-list.jsp</result>
+        </action>
+        
+        <action name="order-createFromPrescription" class="com.pharmacy.action.OrderAction" method="createFromPrescription">
+            <result name="success" type="redirect">order-list</result>
+            <result name="error" type="redirect">prescription-list</result>
+        </action>
+        
+        <action name="order-processPayment" class="com.pharmacy.action.OrderAction" method="processPayment">
+            <result name="success" type="redirect">order-list</result>
+            <result name="error">/WEB-INF/content/order-view.jsp</result>
+        </action>
+        
+        <action name="order-collect" class="com.pharmacy.action.OrderAction" method="collect">
+            <result name="success" type="redirect">order-list</result>
+            <result name="error" type="redirect">order-list</result>
+        </action>
+        
+        <!-- Medicine Actions -->
+        <action name="medicine-list" class="com.pharmacy.action.MedicineAction" method="list">
+            <result name="success">/WEB-INF/content/medicine-list.jsp</result>
+        </action>
+        
+        <action name="medicine-view" class="com.pharmacy.action.MedicineAction" method="view">
+            <result name="success">/WEB-INF/content/medicine-view.jsp</result>
+            <result name="error">/WEB-INF/content/medicine-list.jsp</result>
+        </action>
+        
+        <action name="medicine-search" class="com.pharmacy.action.MedicineAction" method="search">
+            <result name="success">/WEB-INF/content/medicine-list.jsp</result>
+        </action>
+        
+    </package>
+</struts>
+
+<!-- Made with Bob -->

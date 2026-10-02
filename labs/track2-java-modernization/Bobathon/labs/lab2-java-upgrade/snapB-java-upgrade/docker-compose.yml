@@ -1,0 +1,29 @@
+services:
+  pharmacy-app:
+    build:
+      context: .
+      platforms:
+        - linux/amd64
+    image: simple-pharmacy:latest
+    container_name: simple-pharmacy
+    platform: linux/amd64
+    ports:
+      - "9080:9080"   # Application HTTP
+      - "9444:9443"   # Application HTTPS (mapped to 9444 on host to avoid conflict)
+      - "9060:9060"   # Admin Console HTTP
+      - "9044:9043"   # Admin Console HTTPS (mapped to 9044 on host to avoid conflict)
+    environment:
+      - ENABLE_BASIC_LOGGING=true
+    volumes:
+      - websphere-logs:/opt/IBM/WebSphere/AppServer/profiles/AppSrv01/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9080/pharmacy/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  websphere-logs:
+
+# Made with Bob

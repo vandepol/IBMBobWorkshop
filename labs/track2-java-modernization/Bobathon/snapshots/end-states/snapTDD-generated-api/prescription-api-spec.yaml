@@ -1,0 +1,396 @@
+openapi: 3.0.3
+info:
+  title: Pharmacy Prescription API
+  description: |
+    REST API for managing pharmacy prescriptions. This API allows you to create, retrieve, and validate prescriptions.
+    
+    **Key Features:**
+    - Create new prescriptions with automatic expiry date calculation (30 days)
+    - Retrieve all prescriptions or specific prescriptions by ID
+    - Validate pending prescriptions
+    
+    **Prescription Lifecycle:**
+    1. Prescription is created with PENDING status
+    2. Prescription can be validated, changing status to VALIDATED
+    3. Prescriptions expire 30 days after creation
+  version: 1.0.0
+  contact:
+    name: Pharmacy API Support
+    email: support@pharmacy.example.com
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+  - url: https://api.pharmacy.example.com
+    description: Production server
+
+tags:
+  - name: Prescriptions
+    description: Operations related to prescription management
+
+paths:
+  /prescriptions:
+    get:
+      tags:
+        - Prescriptions
+      summary: Get all prescriptions
+      description: Retrieves a complete list of all prescriptions in the system
+      operationId: getAllPrescriptions
+      responses:
+        '200':
+          description: Successfully retrieved list of prescriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prescription'
+              examples:
+                prescriptionList:
+                  summary: Example list of prescriptions
+                  value:
+                    - id: "RX001"
+                      patientName: "John Doe"
+                      patientId: "P12345"
+                      doctorName: "Dr. Sarah Smith"
+                      medicineId: "M001"
+                      medicineName: "Amoxicillin"
+                      quantity: 30
+                      dosage: "500mg twice daily"
+                      prescriptionDate: "2026-03-13T15:00:00Z"
+                      expiryDate: "2026-04-12T15:00:00Z"
+                      status: "VALIDATED"
+                      notes: "Take with food"
+                    - id: "RX002"
+                      patientName: "Jane Smith"
+                      patientId: "P67890"
+                      doctorName: "Dr. Michael Johnson"
+                      medicineId: "M002"
+                      medicineName: "Ibuprofen"
+                      quantity: 60
+                      dosage: "200mg as needed"
+                      prescriptionDate: "2026-03-12T10:30:00Z"
+                      expiryDate: "2026-04-11T10:30:00Z"
+                      status: "PENDING"
+                      notes: ""
+
+    post:
+      tags:
+        - Prescriptions
+      summary: Create a new prescription
+      description: |
+        Creates a new prescription with the provided details. 
+        
+        **Automatic Processing:**
+        - Prescription ID is auto-generated
+        - Prescription date is set to current date/time
+        - Expiry date is automatically set to 30 days from creation
+        - Initial status is set to PENDING
+        
+        **Validation:**
+        - Medicine ID must exist in the system
+        - All required fields must be provided
+      operationId: createPrescription
+      requestBody:
+        required: true
+        description: Prescription details
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+            examples:
+              newPrescription:
+                summary: Example prescription request
+                value:
+                  patientName: "John Doe"
+                  patientId: "P12345"
+                  doctorName: "Dr. Sarah Smith"
+                  medicineId: "M001"
+                  quantity: 30
+                  dosage: "500mg twice daily"
+                  notes: "Take with food"
+      responses:
+        '201':
+          description: Prescription successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+              examples:
+                createdPrescription:
+                  summary: Newly created prescription
+                  value:
+                    id: "RX003"
+                    patientName: "John Doe"
+                    patientId: "P12345"
+                    doctorName: "Dr. Sarah Smith"
+                    medicineId: "M001"
+                    medicineName: "Amoxicillin"
+                    quantity: 30
+                    dosage: "500mg twice daily"
+                    prescriptionDate: "2026-03-13T15:00:00Z"
+                    expiryDate: "2026-04-12T15:00:00Z"
+                    status: "PENDING"
+                    notes: "Take with food"
+        '400':
+          description: Invalid prescription data or medicine ID not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidMedicine:
+                  summary: Invalid medicine ID
+                  value:
+                    error: "Invalid medicine ID"
+                invalidData:
+                  summary: Invalid prescription data
+                  value:
+                    error: "Invalid prescription data: quantity must be a positive number"
+
+  /prescriptions/{id}:
+    get:
+      tags:
+        - Prescriptions
+      summary: Get prescription by ID
+      description: Retrieves a specific prescription using its unique identifier
+      operationId: getPrescriptionById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the prescription
+          schema:
+            type: string
+          example: "RX001"
+      responses:
+        '200':
+          description: Successfully retrieved prescription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+              examples:
+                prescription:
+                  summary: Example prescription
+                  value:
+                    id: "RX001"
+                    patientName: "John Doe"
+                    patientId: "P12345"
+                    doctorName: "Dr. Sarah Smith"
+                    medicineId: "M001"
+                    medicineName: "Amoxicillin"
+                    quantity: 30
+                    dosage: "500mg twice daily"
+                    prescriptionDate: "2026-03-13T15:00:00Z"
+                    expiryDate: "2026-04-12T15:00:00Z"
+                    status: "VALIDATED"
+                    notes: "Take with food"
+        '404':
+          description: Prescription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  summary: Prescription not found
+                  value:
+                    error: "Prescription not found"
+
+  /prescriptions/{id}/validate:
+    put:
+      tags:
+        - Prescriptions
+      summary: Validate a prescription
+      description: |
+        Changes the status of a prescription from PENDING to VALIDATED.
+        
+        **Requirements:**
+        - Prescription must exist
+        - Prescription must be in PENDING status
+        
+        **Effect:**
+        - Status is changed from PENDING to VALIDATED
+        - Prescription becomes ready for fulfillment
+      operationId: validatePrescription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the prescription to validate
+          schema:
+            type: string
+          example: "RX001"
+      responses:
+        '200':
+          description: Prescription successfully validated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+              examples:
+                validatedPrescription:
+                  summary: Validated prescription
+                  value:
+                    id: "RX001"
+                    patientName: "John Doe"
+                    patientId: "P12345"
+                    doctorName: "Dr. Sarah Smith"
+                    medicineId: "M001"
+                    medicineName: "Amoxicillin"
+                    quantity: 30
+                    dosage: "500mg twice daily"
+                    prescriptionDate: "2026-03-13T15:00:00Z"
+                    expiryDate: "2026-04-12T15:00:00Z"
+                    status: "VALIDATED"
+                    notes: "Take with food"
+        '400':
+          description: Prescription is not in PENDING status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notPending:
+                  summary: Prescription not in PENDING status
+                  value:
+                    error: "Prescription is not in PENDING status"
+        '404':
+          description: Prescription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  summary: Prescription not found
+                  value:
+                    error: "Prescription not found"
+
+components:
+  schemas:
+    Prescription:
+      type: object
+      description: Complete prescription information
+      required:
+        - id
+        - patientName
+        - patientId
+        - doctorName
+        - medicineId
+        - medicineName
+        - quantity
+        - dosage
+        - prescriptionDate
+        - expiryDate
+        - status
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the prescription
+          example: "RX001"
+        patientName:
+          type: string
+          description: Full name of the patient
+          example: "John Doe"
+        patientId:
+          type: string
+          description: Unique identifier for the patient
+          example: "P12345"
+        doctorName:
+          type: string
+          description: Full name of the prescribing doctor
+          example: "Dr. Sarah Smith"
+        medicineId:
+          type: string
+          description: Unique identifier for the medicine
+          example: "M001"
+        medicineName:
+          type: string
+          description: Name of the prescribed medicine
+          example: "Amoxicillin"
+        quantity:
+          type: integer
+          description: Number of units prescribed
+          minimum: 1
+          example: 30
+        dosage:
+          type: string
+          description: Dosage instructions
+          example: "500mg twice daily"
+        prescriptionDate:
+          type: string
+          format: date-time
+          description: Date and time when prescription was created
+          example: "2026-03-13T15:00:00Z"
+        expiryDate:
+          type: string
+          format: date-time
+          description: Date and time when prescription expires (30 days from creation)
+          example: "2026-04-12T15:00:00Z"
+        status:
+          type: string
+          description: Current status of the prescription
+          enum:
+            - PENDING
+            - VALIDATED
+          example: "PENDING"
+        notes:
+          type: string
+          description: Additional notes or instructions
+          example: "Take with food"
+
+    PrescriptionRequest:
+      type: object
+      description: Request body for creating a new prescription
+      required:
+        - patientName
+        - patientId
+        - doctorName
+        - medicineId
+        - quantity
+        - dosage
+      properties:
+        patientName:
+          type: string
+          description: Full name of the patient
+          example: "John Doe"
+        patientId:
+          type: string
+          description: Unique identifier for the patient
+          example: "P12345"
+        doctorName:
+          type: string
+          description: Full name of the prescribing doctor
+          example: "Dr. Sarah Smith"
+        medicineId:
+          type: string
+          description: Unique identifier for the medicine (must exist in system)
+          example: "M001"
+        quantity:
+          type: integer
+          description: Number of units prescribed
+          minimum: 1
+          example: 30
+        dosage:
+          type: string
+          description: Dosage instructions
+          example: "500mg twice daily"
+        notes:
+          type: string
+          description: Additional notes or instructions (optional)
+          example: "Take with food"
+
+    Error:
+      type: object
+      description: Error response
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Prescription not found"
+
+# Made with Bob

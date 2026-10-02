@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incident_management_quick_reference>
+  <overview>
+    Quick reference guide for SDLC incident management using Bob with
+    ServiceNow, Ansible, and Terraform integration.
+  </overview>
+
+  <incident_workflow_checklist>
+    <phase name="Incident Creation">
+      <steps>
+        <step>☐ Gather complete incident details from user</step>
+        <step>☐ Determine appropriate urgency (1-3)</step>
+        <step>☐ Determine appropriate impact (1-3)</step>
+        <step>☐ Create ServiceNow incident via MCP</step>
+        <step>☐ Record incident number for tracking</step>
+      </steps>
+    </phase>
+
+    <phase name="Initial Assessment">
+      <steps>
+        <step>☐ Identify incident type (performance/user_overload/deployment/config/backup)</step>
+        <step>☐ Review available playbooks and tools</step>
+        <step>☐ Plan diagnostic approach</step>
+      </steps>
+    </phase>
+
+    <phase name="Diagnosis">
+      <steps>
+        <step>☐ Run appropriate health check playbook</step>
+        <step>☐ Analyze diagnostic results</step>
+        <step>☐ Identify root cause</step>
+        <step>☐ Update ServiceNow with findings</step>
+      </steps>
+    </phase>
+
+    <phase name="Remediation">
+      <steps>
+        <step>☐ Select appropriate remediation approach</step>
+        <step>☐ Explain fix to user (for user_overload: BOTH scaling + load balancer required)</step>
+        <step>☐ Get confirmation if needed</step>
+        <step>☐ Execute remediation (playbook OR Terraform scaling + load balancer)</step>
+        <step>☐ Monitor execution for errors</step>
+        <step>☐ For user_overload: Verify load balancer distributes traffic across instances</step>
+        <step>☐ Update ServiceNow with actions taken</step>
+      </steps>
+    </phase>
+
+    <phase name="Verification">
+      <steps>
+        <step>☐ Re-run health check playbook</step>
+        <step>☐ Compare before/after metrics</step>
+        <step>☐ Confirm resolution</step>
+        <step>☐ Document verification results</step>
+      </steps>
+    </phase>
+
+    <phase name="Closure">
+      <steps>
+        <step>☐ Prepare resolution summary</step>
+        <step>☐ Update ServiceNow to resolved state</step>
+        <step>☐ Provide summary to user</step>
+      </steps>
+    </phase>
+  </incident_workflow_checklist>
+
+  <incident_type_quick_guide>
+    <type name="Performance">
+      <symptoms>Slow response times, timeouts, degraded performance</symptoms>
+      <diagnostic_playbook>health-check.yml</diagnostic_playbook>
+      <remediation_playbook>fix-performance.yml</remediation_playbook>
+      <typical_urgency>2 (Medium)</typical_urgency>
+    </type>
+
+    <type name="User Overload">
+      <symptoms>Backend overloaded, high CPU/memory, too many users/connections</symptoms>
+      <diagnostic_playbook>health-check.yml, check metrics endpoint</diagnostic_playbook>
+      <remediation_approach>Terraform horizontal scaling + Nginx load balancer (BOTH required)</remediation_approach>
+      <typical_urgency>2 (Medium)</typical_urgency>
+      <critical_steps>
+        <step>1. Scale backend to multiple instances using Terraform</step>
+        <step>2. Add Nginx load balancer to distribute traffic</step>
+        <step>3. Verify traffic distribution across all instances</step>
+      </critical_steps>
+      <warning>Scaling alone is insufficient - load balancer is REQUIRED for traffic distribution</warning>
+    </type>
+
+    <type name="Deployment">
+      <symptoms>Deployment failures, broken functionality after deploy</symptoms>
+      <diagnostic_playbook>health-check.yml</diagnostic_playbook>
+      <remediation_playbook>rollback.yml or deploy.yml</remediation_playbook>
+      <typical_urgency>1 (High)</typical_urgency>
+    </type>
+
+    <type name="Configuration">
+      <symptoms>Wrong settings, misconfiguration, connection issues</symptoms>
+      <diagnostic_playbook>health-check.yml, read config files</diagnostic_playbook>
+      <remediation_playbook>update-config.yml</remediation_playbook>
+      <typical_urgency>2 (Medium)</typical_urgency>
+    </type>
+
+    <type name="Backup/Restore">
+      <symptoms>Need for backup or data restore</symptoms>
+      <diagnostic_playbook>health-check.yml</diagnostic_playbook>
+      <remediation_playbook>backup-database.yml</remediation_playbook>
+      <typical_urgency>3 (Low) for backups, 1 (High) for restores</typical_urgency>
+    </type>
+  </incident_type_quick_guide>
+
+  <servicenow_quick_reference>
+    <urgency_levels>
+      <level number="1">High - Critical issue, immediate attention required</level>
+      <level number="2">Medium - Significant issue, needs timely resolution</level>
+      <level number="3">Low - Minor issue, can wait for scheduled maintenance</level>
+    </urgency_levels>
+
+    <impact_levels>
+      <level number="1">High - Affects multiple users or critical systems</level>
+      <level number="2">Medium - Affects single user or non-critical system</level>
+      <level number="3">Low - Minimal impact, cosmetic issues</level>
+    </impact_levels>
+
+    <state_values>
+      <state number="1">New</state>
+      <state number="2">In Progress</state>
+      <state number="3">On Hold</state>
+      <state number="6">Resolved</state>
+      <state number="7">Closed</state>
+      <state number="8">Canceled</state>
+    </state_values>
+
+    <mcp_tool_usage>
+      <tool name="create_incident">
+        <required>short_description</required>
+        <optional>description, urgency, impact</optional>
+        <returns>Incident number (e.g., INC0010001)</returns>
+      </tool>
+
+      <tool name="update_incident">
+        <required>identifier (incident number or sys_id)</required>
+        <optional>state, work_notes, assigned_to</optional>
+        <note>Always include work_notes when updating</note>
+      </tool>
+
+      <tool name="get_incident">
+        <required>identifier (incident number or sys_id)</required>
+        <returns>Full incident details</returns>
+      </tool>
+    </mcp_tool_usage>
+  </servicenow_quick_reference>
+
+  <ansible_quick_reference>
+    <common_playbooks>
+      <playbook name="health-check.yml">
+        <purpose>Diagnose system health and performance</purpose>
+        <when_to_use>Initial diagnosis, verification after fixes</when_to_use>
+        <typical_output>Service status, response times, errors</typical_output>
+      </playbook>
+
+      <playbook name="fix-performance.yml">
+        <purpose>Resolve performance issues</purpose>
+        <when_to_use>After diagnosing performance degradation</when_to_use>
+        <typical_output>Performance improvements, metrics</typical_output>
+      </playbook>
+
+      <playbook name="deploy.yml">
+        <purpose>Deploy application updates</purpose>
+        <when_to_use>Scheduled deployments, fixes</when_to_use>
+        <typical_output>Deployment status, version info</typical_output>
+      </playbook>
+
+      <playbook name="rollback.yml">
+        <purpose>Rollback to previous version</purpose>
+        <when_to_use>Deployment failures, critical issues</when_to_use>
+        <typical_output>Rollback status, restored version</typical_output>
+      </playbook>
+
+      <playbook name="update-config.yml">
+        <purpose>Update configuration settings</purpose>
+        <when_to_use>Configuration changes needed</when_to_use>
+        <typical_output>Configuration changes applied</typical_output>
+      </playbook>
+
+      <playbook name="backup-database.yml">
+        <purpose>Backup database</purpose>
+        <when_to_use>Before maintenance, scheduled backups</when_to_use>
+        <typical_output>Backup file location and size</typical_output>
+      </playbook>
+    </common_playbooks>
+
+    <mcp_tool_usage>
+      <tool name="run_playbook">
+        <required>playbook (path to .yml file)</required>
+        <optional>inventory, check (dry run), verbose</optional>
+        <example>
+          playbook: ansible/playbooks/health-check.yml
+          inventory: ansible/inventory/hosts.yml
+        </example>
+      </tool>
+
+      <tool name="run_adhoc">
+        <required>hosts, module</required>
+        <optional>args, inventory, become</optional>
+        <use_case>Quick commands without playbook</use_case>
+      </tool>
+    </mcp_tool_usage>
+  </ansible_quick_reference>
+
+  <common_commands>
+    <category name="Health Checks">
+      <command>
+        <description>Check service health</description>
+        <syntax>curl http://localhost:PORT/health</syntax>
+      </command>
+      <command>
+        <description>Measure response time</description>
+        <syntax>time curl -s http://localhost:PORT/health</syntax>
+      </command>
+      <command>
+        <description>Check container status</description>
+        <syntax>docker ps</syntax>
+      </command>
+    </category>
+
+    <category name="Diagnostics">
+      <command>
+        <description>View container logs</description>
+        <syntax>docker logs CONTAINER_NAME</syntax>
+      </command>
+      <command>
+        <description>Check disk space</description>
+        <syntax>df -h</syntax>
+      </command>
+      <command>
+        <description>Check memory usage</description>
+        <syntax>free -h</syntax>
+      </command>
+    </category>
+
+    <category name="File Operations">
+      <command>
+        <description>List files</description>
+        <syntax>ls -la PATH</syntax>
+      </command>
+      <command>
+        <description>Check file contents</description>
+        <syntax>cat FILE_PATH</syntax>
+      </command>
+      <command>
+        <description>Search in files</description>
+        <syntax>grep "pattern" FILE_PATH</syntax>
+      </command>
+    </category>
+  </common_commands>
+
+  <troubleshooting_quick_guide>
+    <issue name="ServiceNow MCP fails">
+      <check>Verify .env has SERVICENOW_* variables</check>
+      <check>Test ServiceNow connectivity</check>
+      <fallback>Proceed with manual incident tracking</fallback>
+    </issue>
+
+    <issue name="Ansible playbook fails">
+      <check>Verify playbook and inventory are ABSOLUTE paths (relative paths always fail)</check>
+      <check>Do NOT set the cwd parameter — causes 'spawn /bin/sh ENOENT'</check>
+      <check>For shell module: avoid Go template syntax (e.g., docker --format "{{.Names}}") — use docker ps --format json or docker inspect instead</check>
+      <check>Verify connectivity to target hosts</check>
+      <fallback>Use manual commands or alternative playbook</fallback>
+    </issue>
+
+    <issue name="Playbook not available">
+      <check>List available playbooks in ansible/playbooks/</check>
+      <check>Check if similar playbook exists</check>
+      <fallback>Use manual commands or create new playbook</fallback>
+    </issue>
+
+    <issue name="Root cause unclear">
+      <check>Run health check for more details</check>
+      <check>Check application logs</check>
+      <check>Review recent changes</check>
+      <fallback>Escalate to subject matter expert</fallback>
+    </issue>
+
+    <issue name="Terraform state lock (stale lock from timed-out apply)">
+      <check>Identify lock ID from the error message: 'Error acquiring the state lock'</check>
+      <check>Confirm the prior apply actually completed by running terraform_show — if state is consistent, the lock is stale</check>
+      <resolution>Use Ansible run_adhoc to force-unlock: module='shell', args='cd [absolute-tf-dir] &amp;&amp; terraform force-unlock -force [LOCK_ID]'</resolution>
+      <warning>Only force-unlock if you are certain the prior apply process is no longer running</warning>
+    </issue>
+
+    <issue name="Terraform -replace flag not working via terraform_apply plan_file">
+      <check>The plan_file parameter accepts a saved plan file path only — it does NOT accept raw flags like -replace</check>
+      <resolution>Use Ansible run_adhoc as fallback: module='shell', args='cd [absolute-tf-dir] &amp;&amp; terraform apply -auto-approve -replace="resource.type.name"'</resolution>
+      <note>Docker image rebuilds triggered this way may exceed MCP call timeouts — this is expected for large images</note>
+    </issue>
+
+    <issue name="Terraform apply times out (Docker image build)">
+      <check>Docker image builds can take minutes and exceed MCP call timeout</check>
+      <check>Run terraform_show after timeout to verify whether the apply actually completed</check>
+      <check>If a stale state lock remains, use force-unlock (see above issue)</check>
+      <note>The infrastructure may be fully deployed despite the timeout — always verify state before retrying</note>
+    </issue>
+
+    <issue name="Fix doesn't resolve issue">
+      <check>Re-run diagnostics to see current state</check>
+      <check>Verify fix was applied correctly</check>
+      <check>Consider alternative root causes</check>
+      <fallback>Try different remediation approach</fallback>
+    </issue>
+  </troubleshooting_quick_guide>
+
+  <communication_templates>
+    <template name="incident_created">
+      <text>
+        ServiceNow incident [INC_NUMBER] created successfully.
+        - Priority: [PRIORITY]
+        - Short Description: [DESCRIPTION]
+        
+        Now I'll begin diagnosis to identify the root cause.
+      </text>
+    </template>
+
+    <template name="diagnosis_complete">
+      <text>
+        Diagnosis complete. [FINDINGS_SUMMARY]
+        
+        Root cause: [ROOT_CAUSE]
+        
+        I'll now [REMEDIATION_ACTION] to resolve this issue.
+      </text>
+    </template>
+
+    <template name="seeking_confirmation">
+      <text>
+        I recommend [ACTION] because [REASON].
+        This will [IMPACT].
+        
+        Shall I proceed?
+      </text>
+    </template>
+
+    <template name="verification_complete">
+      <text>
+        Verification complete. [RESULTS_SUMMARY]
+        
+        Before: [BEFORE_METRICS]
+        After: [AFTER_METRICS]
+        
+        The issue has been successfully resolved.
+      </text>
+    </template>
+
+    <template name="incident_closed">
+      <text>
+        Incident [INC_NUMBER] has been resolved and closed.
+        
+        Summary:
+        - Root Cause: [ROOT_CAUSE]
+        - Actions Taken: [ACTIONS]
+        - Verification: [VERIFICATION_RESULTS]
+        
+        [FOLLOW_UP_ACTIONS if any]
+      </text>
+    </template>
+  </communication_templates>
+
+  <best_practices_summary>
+    <practice>Always diagnose before attempting fixes</practice>
+    <practice>Update ServiceNow after each major step</practice>
+    <practice>Verify resolution before closing incidents</practice>
+    <practice>Explain actions clearly to users</practice>
+    <practice>Get confirmation before disruptive actions</practice>
+    <practice>Document everything for audit trail</practice>
+    <practice>Use appropriate playbooks for incident type</practice>
+    <practice>Compare before/after metrics</practice>
+    <practice>For user overload: ALWAYS include load balancer with scaling - scaling alone is incomplete</practice>
+  </best_practices_summary>
+
+  <success_criteria>
+    <criterion>Incident created with complete information</criterion>
+    <criterion>Root cause identified through systematic diagnosis</criterion>
+    <criterion>Appropriate automation used for remediation</criterion>
+    <criterion>Resolution verified with objective metrics</criterion>
+    <criterion>Complete audit trail in ServiceNow</criterion>
+    <criterion>User informed and satisfied with resolution</criterion>
+  </success_criteria>
+</incident_management_quick_reference>
+
+<!-- Made with Bob -->

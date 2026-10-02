@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "servicenow": {
+      "command": "node",
+      "args": [
+        "/RUN/setup-local.sh/TO/SET/THIS/PATH/local-servicenow-mcp/dist/index.js"
+      ],
+      "cwd": "/RUN/setup-local.sh/TO/SET/THIS/PATH/local-servicenow-mcp",
+      "env": {
+        "SERVICENOW_BASE_URL": "http://localhost:8099/api/now"
+      },
+      "alwaysAllow": [
+        "list_incidents",
+        "get_incident",
+        "search_knowledge"
+      ],
+      "disabled": false
+    },
+    "terraform": {
+      "command": "node",
+      "args": [
+        "/RUN/setup-local.sh/TO/SET/THIS/PATH/terraform-mcp-server/build/index.js"
+      ],
+      "cwd": "/RUN/setup-local.sh/TO/SET/THIS/PATH/terraform-mcp-server",
+      "disabled": false,
+      "alwaysAllow": [],
+      "disabledTools": []
+    },
+    "ansible": {
+      "command": "node",
+      "args": [
+        "/RUN/setup-local.sh/TO/SET/THIS/PATH/ansible-mcp-server/build/index.js"
+      ],
+      "cwd": "/RUN/setup-local.sh/TO/SET/THIS/PATH/ansible-mcp-server",
+      "disabled": false,
+      "alwaysAllow": [],
+      "disabledTools": []
+    }
+  }
+}

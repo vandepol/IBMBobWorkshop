@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session_incident_tracking>
+  <overview>
+    Critical instructions for maintaining incident context throughout a Bob session.
+    This ensures proper tracking and allows multiple users to work independently on
+    the same ServiceNow instance without conflicts.
+  </overview>
+
+  <critical_rule>
+    Once an incident is created in ServiceNow, you MUST maintain and reference that
+    incident ID throughout the entire session until the incident is closed. This is
+    NON-NEGOTIABLE and essential for proper incident management.
+  </critical_rule>
+
+  <why_this_matters>
+    <reason>Maintains complete audit trail for a single incident</reason>
+    <reason>Prevents creating duplicate incidents for the same issue</reason>
+    <reason>Allows multiple users to run labs simultaneously on same ServiceNow instance</reason>
+    <reason>Ensures all work notes and updates are associated with correct incident</reason>
+    <reason>Provides clear incident lifecycle from creation to closure</reason>
+  </why_this_matters>
+
+  <implementation_steps>
+    <step number="1" phase="Incident Creation">
+      <action>Store incident identifier immediately after creation</action>
+      <details>
+        When create_incident succeeds, the response contains:
+        - number: The incident number (e.g., "INC0010005")
+        - sys_id: The internal ServiceNow identifier
+        
+        You MUST store BOTH of these values in your session context.
+      </details>
+      <example>
+        After successful creation:
+        "✅ Created incident INC0010005 (sys_id: abc123def456) for tracking this issue."
+      </example>
+    </step>
+
+    <step number="2" phase="All Subsequent Operations">
+      <action>Reference stored incident ID for every ServiceNow operation</action>
+      <operations>
+        <operation name="update_incident">
+          Always use the stored incident number or sys_id as the identifier parameter
+        </operation>
+        <operation name="adding_work_notes">
+          All work notes must be added to the SAME incident
+        </operation>
+        <operation name="state_transitions">
+          State changes (New → In Progress → Resolved) must be applied to the SAME incident
+        </operation>
+        <operation name="closure">
+          Final closure must be performed on the SAME incident
+        </operation>
+      </operations>
+      <example>
+        Throughout the session:
+        "Updating incident INC0010005 with diagnosis findings..."
+        "Updating incident INC0010005 with remediation plan..."
+        "Updating incident INC0010005 with verification results..."
+        "Closing incident INC0010005 as resolved..."
+      </example>
+    </step>
+
+    <step number="3" phase="User Communication">
+      <action>Display incident ID prominently in all status updates</action>
+      <details>
+        Include the incident number in your communications so the user always knows
+        which incident is being tracked. This provides transparency and helps users
+        verify the correct incident is being updated.
+      </details>
+      <examples>
+        <good>"Running health check for incident INC0010005..."</good>
+        <good>"Incident INC0010005: Diagnosis complete - server overload detected"</good>
+        <good>"Applying remediation for incident INC0010005..."</good>
+        <bad>"Running health check..." (no incident reference)</bad>
+        <bad>"Diagnosis complete" (no incident reference)</bad>
+      </examples>
+    </step>
+
+    <step number="4" phase="Error Prevention">
+      <action>Never create multiple incidents for the same issue</action>
+      <details>
+        If you encounter an error updating an incident:
+        1. Troubleshoot the update operation
+        2. Verify the incident ID is correct
+        3. Check if incident still exists using get_incident
+        4. Retry the update operation
+        5. DO NOT create a new incident
+        
+        Only create a new incident if:
+        - User explicitly requests tracking a DIFFERENT issue
+        - Previous incident was successfully closed and new issue reported
+      </details>
+    </step>
+  </implementation_steps>
+
+  <multi_user_support>
+    <principle>
+      Each user's Bob session maintains its own incident context independently,
+      allowing multiple users to run the lab simultaneously on the same ServiceNow
+      instance without any conflicts or cross-contamination.
+    </principle>
+    
+    <how_it_works>
+      <scenario>
+        User A starts a session:
+        - Creates incident INC0010005
+        - Bob tracks INC0010005 throughout User A's entire session
+        - All updates go to INC0010005
+        
+        User B starts a separate session (same ServiceNow instance):
+        - Creates incident INC0010006
+        - Bob tracks INC0010006 throughout User B's entire session
+        - All updates go to INC0010006
+        
+        Result:
+        - No conflicts between users
+        - Each incident has complete, independent lifecycle
+        - ServiceNow shows two separate incidents with proper tracking
+      </scenario>
+    </how_it_works>
+    
+    <benefits>
+      <benefit>Multiple students can complete the lab simultaneously</benefit>
+      <benefit>Each student has their own incident to track</benefit>
+      <benefit>No confusion about which incident belongs to which user</benefit>
+      <benefit>Clean audit trail for each user's work</benefit>
+    </benefits>
+  </multi_user_support>
+
+  <session_context_management>
+    <what_to_store>
+      <item priority="critical">Incident number (e.g., "INC0010005")</item>
+      <item priority="critical">Incident sys_id (for API operations)</item>
+      <item priority="high">Incident creation timestamp</item>
+      <item priority="medium">Initial incident description</item>
+    </what_to_store>
+    
+    <when_to_reference>
+      <timing>Every time you call update_incident</timing>
+      <timing>When displaying status updates to user</timing>
+      <timing>When documenting actions in work notes</timing>
+      <timing>When closing the incident</timing>
+      <timing>When explaining what you're doing</timing>
+    </when_to_reference>
+    
+    <session_lifetime>
+      The incident context persists from creation until:
+      - Incident is successfully closed (state = 6 or 7)
+      - User explicitly starts working on a different incident
+      - Session ends (user closes Bob or starts new conversation)
+    </session_lifetime>
+  </session_context_management>
+
+  <error_recovery>
+    <scenario name="Lost incident context">
+      <detection>
+        You realize you don't have the incident ID stored, or you're unsure which
+        incident you should be updating.
+      </detection>
+      <resolution>
+        <step>Ask user: "Which incident number are you working with?"</step>
+        <step>If user doesn't know, use list_incidents to find recent incidents</step>
+        <step>Once identified, store that incident ID and use it going forward</step>
+        <step>Confirm with user: "I'll continue tracking incident INC0010005"</step>
+      </resolution>
+    </scenario>
+
+    <scenario name="Update operation fails">
+      <detection>
+        update_incident returns an error (e.g., "Incident not found", "Invalid state transition")
+      </detection>
+      <resolution>
+        <step>Verify the incident ID is correct (check what you have stored)</step>
+        <step>Use get_incident to check if incident still exists</step>
+        <step>If incident exists, analyze the error and fix the update parameters</step>
+        <step>Retry the update operation with corrected parameters</step>
+        <step>DO NOT create a new incident as a workaround</step>
+      </resolution>
+      <example>
+        Error: "Invalid state transition from 6 to 2"
+        Analysis: Incident is already resolved (state 6), can't move back to In Progress (state 2)
+        Solution: Either reopen incident first, or acknowledge it's already resolved
+        DO NOT: Create a new incident
+      </example>
+    </scenario>
+
+    <scenario name="User mentions different incident">
+      <detection>
+        User says something like "What about incident INC0010007?" when you've been
+        tracking INC0010005
+      </detection>
+      <resolution>
+        <step>Clarify with user which incident they want to work on</step>
+        <step>If switching to different incident, acknowledge the switch</step>
+        <step>Update your stored incident context to the new incident</step>
+        <step>Confirm: "Switching to track incident INC0010007"</step>
+      </resolution>
+    </scenario>
+  </error_recovery>
+
+  <best_practices>
+    <practice priority="critical">
+      <name>Always display incident number in communications</name>
+      <rationale>Keeps user informed and prevents confusion</rationale>
+      <example>
+        "Updating incident INC0010005 with diagnosis: Server overload detected (CPU: 95%, Memory: 88%)"
+      </example>
+    </practice>
+
+    <practice priority="critical">
+      <name>Store incident ID immediately after creation</name>
+      <rationale>Prevents losing track of which incident to update</rationale>
+      <implementation>
+        As soon as create_incident succeeds, extract and store:
+        - response.result.number
+        - response.result.sys_id
+      </implementation>
+    </practice>
+
+    <practice priority="high">
+      <name>Reference incident ID in every update operation</name>
+      <rationale>Ensures all updates go to correct incident</rationale>
+      <implementation>
+        Every update_incident call must include the stored incident identifier
+      </implementation>
+    </practice>
+
+    <practice priority="high">
+      <name>Verify incident exists before major operations</name>
+      <rationale>Catches issues early before attempting updates</rationale>
+      <when>
+        - Before starting remediation phase
+        - After any long-running operations
+        - If you suspect the incident might have been modified externally
+      </when>
+    </practice>
+
+    <practice priority="medium">
+      <name>Include incident number in todo list items</name>
+      <rationale>Provides context in progress tracking</rationale>
+      <example>
+        [x] Create and track incident INC0010005 in ServiceNow
+        [-] Diagnose root cause for INC0010005
+        [ ] Apply remediation for INC0010005
+      </example>
+    </practice>
+  </best_practices>
+
+  <anti_patterns>
+    <anti_pattern>
+      <issue>Creating multiple incidents for the same issue</issue>
+      <why_bad>
+        - Fragments the audit trail
+        - Confuses incident tracking
+        - Makes it impossible to see complete incident lifecycle
+        - Breaks multi-user lab scenario
+      </why_bad>
+      <correct_approach>
+        Create ONE incident at the start, track it throughout the entire session
+      </correct_approach>
+    </anti_pattern>
+
+    <anti_pattern>
+      <issue>Not displaying incident number in status updates</issue>
+      <why_bad>
+        - User doesn't know which incident is being tracked
+        - Hard to verify correct incident is being updated
+        - Reduces transparency
+      </why_bad>
+      <correct_approach>
+        Always include incident number: "Updating incident INC0010005..."
+      </correct_approach>
+    </anti_pattern>
+
+    <anti_pattern>
+      <issue>Losing track of incident ID mid-session</issue>
+      <why_bad>
+        - Can't update the incident
+        - May create duplicate incident
+        - Breaks incident lifecycle
+      </why_bad>
+      <correct_approach>
+        Store incident ID immediately after creation and reference it consistently
+      </correct_approach>
+    </anti_pattern>
+
+    <anti_pattern>
+      <issue>Using wrong incident ID for updates</issue>
+      <why_bad>
+        - Updates go to wrong incident
+        - Corrupts other users' incidents
+        - Creates confusion in ServiceNow
+      </why_bad>
+      <correct_approach>
+        Always use the incident ID stored at creation time for YOUR session
+      </correct_approach>
+    </anti_pattern>
+  </anti_patterns>
+
+  <verification_checklist>
+    <check phase="After incident creation">
+      ✓ Incident number stored (e.g., INC0010005)
+    </check>
+    <check phase="After incident creation">
+      ✓ Incident sys_id stored
+    </check>
+    <check phase="After incident creation">
+      ✓ Incident number displayed to user
+    </check>
+    <check phase="During diagnosis">
+      ✓ Updates reference stored incident ID
+    </check>
+    <check phase="During diagnosis">
+      ✓ Status messages include incident number
+    </check>
+    <check phase="During remediation">
+      ✓ All updates go to same incident
+    </check>
+    <check phase="During remediation">
+      ✓ No new incidents created
+    </check>
+    <check phase="During verification">
+      ✓ Verification updates reference original incident
+    </check>
+    <check phase="During closure">
+      ✓ Closing the SAME incident that was created
+    </check>
+    <check phase="During closure">
+      ✓ Complete lifecycle tracked in one incident
+    </check>
+  </verification_checklist>
+
+  <summary>
+    Session-based incident tracking is CRITICAL for proper incident management.
+    
+    Key principles:
+    1. ONE incident per issue per session
+    2. Store incident ID immediately after creation
+    3. Reference that ID in ALL subsequent operations
+    4. Display incident number in ALL communications
+    5. NEVER create duplicate incidents for same issue
+    
+    This approach ensures:
+    - Complete audit trail
+    - Multi-user lab support
+    - Clear incident lifecycle
+    - Professional incident management
+  </summary>
+</session_incident_tracking>
+
+<!-- Made with Bob -->

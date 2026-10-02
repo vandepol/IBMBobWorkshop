@@ -1,0 +1,219 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lab 2 — All Changes Made</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.6; background: #fff; color: #1f2328; padding: 24px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 13px; margin-bottom: 28px; }
+  h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #57606a; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 28px 0 12px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f7f8fa; border-bottom: 1px solid #e5e7eb; }
+  .num { font-size: 11px; font-weight: 700; background: #1f2328; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-title { font-weight: 600; font-size: 14px; flex: 1; }
+  .tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+  .tag-code  { background: #dbeafe; color: #1d4ed8; }
+  .tag-guide { background: #fef3c7; color: #92400e; }
+  .tag-done  { background: #dcfce7; color: #15803d; }
+  .body { padding: 12px 14px; }
+  .note { font-size: 13px; color: #57606a; margin-bottom: 8px; }
+  .diff { font-family: "SF Mono", Menlo, monospace; font-size: 12px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+  .dr { display: flex; }
+  .ds { width: 22px; flex-shrink: 0; text-align: center; font-weight: 700; padding: 2px 0; }
+  .dl { padding: 2px 8px; flex: 1; white-space: pre-wrap; word-break: break-all; }
+  .del .ds { color: #b91c1c; background: #fee2e2; } .del .dl { background: #fef2f2; color: #7f1d1d; }
+  .add .ds { color: #15803d; background: #dcfce7; } .add .dl { background: #f0fdf4; color: #14532d; }
+  .ctx .ds { color: #57606a; background: #e5e7eb; } .ctx .dl { background: #f7f8fa; color: #57606a; }
+  .guide-block { background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; padding: 8px 12px; margin: 6px 0; font-size: 13px; }
+  .gl { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #92400e; margin-bottom: 3px; }
+  .rem { color: #b91c1c; }
+  .keep { color: #15803d; font-weight: 600; }
+  .summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 28px; }
+  .stat { background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; text-align: center; }
+  .sn { font-size: 26px; font-weight: 700; color: #15803d; }
+  .sl { font-size: 12px; color: #57606a; margin-top: 2px; }
+  .state-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .state-table th { text-align: left; padding: 6px 10px; background: #f7f8fa; border: 1px solid #e5e7eb; font-size: 11px; text-transform: uppercase; color: #57606a; }
+  .state-table td { padding: 6px 10px; border: 1px solid #e5e7eb; }
+  .state-table td:nth-child(2) { color: #b91c1c; font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
+  .state-table td:nth-child(3) { color: #15803d; font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
+  footer { border-top: 1px solid #e5e7eb; margin-top: 40px; padding-top: 12px; text-align: center; font-size: 12px; color: #57606a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Lab 2 — All Changes Made</h1>
+  <p class="subtitle">Complete record of every change applied to snapB-java-upgrade so the Java upgrade workflow runs end-to-end cleanly</p>
+
+  <div class="summary">
+    <div class="stat"><div class="sn">4</div><div class="sl">Code files changed</div></div>
+    <div class="stat"><div class="sn">7</div><div class="sl">Java files cleaned</div></div>
+    <div class="stat"><div class="sn">7</div><div class="sl">Guide edits needed</div></div>
+  </div>
+
+  
+  <h2>Snapshot State — Before vs After</h2>
+  <table class="state-table">
+    <tr><th>Item</th><th>Was (broken starting state)</th><th>Now (correct Java 8 start)</th></tr>
+    <tr><td>Java compiler target</td><td>21</td><td>1.8</td></tr>
+    <tr><td>Servlet API</td><td>jakarta.servlet-api 6.0.0</td><td>javax.servlet-api 3.1.0</td></tr>
+    <tr><td>JSP API</td><td>jakarta.servlet.jsp-api 4.0.0</td><td>javax.servlet.jsp-api 2.3.1</td></tr>
+    <tr><td>ASM overrides</td><td>asm 9.7 (4 entries, Java 21 fix)</td><td>removed</td></tr>
+    <tr><td>Javassist override</td><td>3.29.2-GA (Liberty/Java 21 fix)</td><td>removed</td></tr>
+    <tr><td>Compiler plugin version</td><td>3.15.0</td><td>3.8.1</td></tr>
+    <tr><td>WAR plugin version</td><td>3.5.1</td><td>3.3.2</td></tr>
+    <tr><td>web.xml schema</td><td>jakarta.ee web-app_6_0.xsd</td><td>jcp.org web-app_3_1.xsd</td></tr>
+    <tr><td>server.xml features</td><td>mpMetrics-1.1, jdbc-4.1, jsp-2.3, servlet-3.1</td><td>pages-3.1, servlet-6.0</td></tr>
+    <tr><td>@Serial annotations</td><td>present in 7 Java files (Java 14+ only)</td><td>removed from all 7 files</td></tr>
+  </table>
+
+  
+  <h2>Code Changes — snapB folder (all done ✓)</h2>
+
+  <div class="card">
+    <div class="card-header"><span class="num">1</span><span class="card-title">pom.xml — reset to Java 8, remove post-upgrade dependencies</span><span class="tag tag-code">pom.xml</span><span class="tag tag-done">✓ Done</span></div>
+    <div class="body">
+      <div class="diff">
+        <div class="dr del"><span class="ds">−</span><span class="dl">&lt;release&gt;21&lt;/release&gt;</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">&lt;source&gt;1.8&lt;/source&gt; / &lt;target&gt;1.8&lt;/target&gt;</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">jakarta.servlet-api 6.0.0</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">javax.servlet-api 3.1.0</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">jakarta.servlet.jsp-api 4.0.0</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">javax.servlet.jsp-api 2.3.1</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">asm 9.7 (×4), javassist 3.29.2-GA  ← post-upgrade fixes, not needed in starting state</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">maven-compiler-plugin 3.15.0 / maven-war-plugin 3.5.1</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">maven-compiler-plugin 3.8.1 / maven-war-plugin 3.3.2</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">2</span><span class="card-title">server.xml — fix Liberty features to match web.xml</span><span class="tag tag-code">server.xml</span><span class="tag tag-done">✓ Done</span></div>
+    <div class="body">
+      <p class="note">Original had Java EE 7 features. App would fail to deploy because Liberty rejects a web.xml descriptor version it doesn't support.</p>
+      <div class="diff">
+        <div class="dr del"><span class="ds">−</span><span class="dl">mpMetrics-1.1  ← deprecated, not used</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">jdbc-4.1        ← no database in this app</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">jsp-2.3         ← Java EE 7</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">servlet-3.1     ← Java EE 7</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">pages-3.1       ← Jakarta EE 10 JSP</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">servlet-6.0     ← Jakarta EE 10 Servlet</span></div>
+      </div>
+      <p class="note" style="margin-top:6px">Note: server.xml is intentionally kept at Jakarta EE 10 — Liberty is the runtime container, not what the workflow upgrades. The workflow upgrades the Java source and dependencies.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">3</span><span class="card-title">web.xml — revert from Jakarta EE 10 back to Java EE</span><span class="tag tag-code">web.xml</span><span class="tag tag-done">✓ Done</span></div>
+    <div class="body">
+      <div class="diff">
+        <div class="dr del"><span class="ds">−</span><span class="dl">xmlns="https://jakarta.ee/xml/ns/jakartaee"</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">web-app_6_0.xsd  version="6.0"</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">xmlns="http://xmlns.jcp.org/xml/ns/javaee"</span></div>
+        <div class="dr add"><span class="ds">+</span><span class="dl">web-app_3_1.xsd  version="3.1"</span></div>
+      </div>
+      <p class="note" style="margin-top:6px">The javax→jakarta namespace migration on web.xml is one of the things the workflow should demonstrate doing.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">4</span><span class="card-title">7 Java files — remove @Serial annotation</span><span class="tag tag-code">*.java</span><span class="tag tag-done">✓ Done</span></div>
+    <div class="body">
+      <p class="note">Files: DashboardAction, MedicineAction, OrderAction, PrescriptionAction, Medicine, Order, Prescription</p>
+      <div class="diff">
+        <div class="dr del"><span class="ds">−</span><span class="dl">import java.io.Serial;</span></div>
+        <div class="dr del"><span class="ds">−</span><span class="dl">    @Serial</span></div>
+        <div class="dr ctx"><span class="ds"> </span><span class="dl">    private static final long serialVersionUID = 1L;</span></div>
+      </div>
+      <p class="note" style="margin-top:6px"><code>@Serial</code> was introduced in Java 14 — not valid in Java 8. Its presence would cause an immediate compile failure on the starting state.</p>
+    </div>
+  </div>
+
+  
+  <h2>Guide Changes — lab guide markdown (still to apply)</h2>
+
+  <div class="card">
+    <div class="card-header"><span class="num">5</span><span class="card-title">Introduction — fix the Before/After table</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Change</div>
+        <span class="rem">After: Liberty Runtime, Java 21, Struts 7.x, Jakarta EE 10</span><br />
+        <span class="keep">After: Liberty Runtime, Java 21, Struts 2.5.x, Jakarta EE 10</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">6</span><span class="card-title">Learning Objectives — remove the Struts bullet</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Remove entirely</div>
+        <span class="rem">"Recognize the major Struts version jump (2.5.x → 7.x) and the ActionSupport import change it triggers"</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">7</span><span class="card-title">V2 Feature Highlights — remove the Struts refactor bullet</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Remove entirely</div>
+        <span class="rem">"Large-scale automated refactor: the Struts 2.5.x → 7.x jump involves rewriting com.opensymphony.xwork2.ActionSupport imports to org.apache.struts2.ActionSupport across all action classes — Bob handles this automatically."</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">8</span><span class="card-title">Exercise 1 Step 6 — remove the entire CVE / Struts upgrade step</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Remove entirely — then renumber Step 7→6, Step 8→7</div>
+        <span class="rem">Step 6: "Upgrade — Mid-Workflow CVE Scan" — the entire step including the Yes/No prompt, the list of Struts/commons upgrades, and the ActionSupport rewrite description.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">9</span><span class="card-title">Exercise 2 — remove ActionSupport diff bullet, keep javax→jakarta bullet</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Remove this bullet</div>
+        <span class="rem">"import com.opensymphony.xwork2.ActionSupport; → import org.apache.struts2.ActionSupport;"</span>
+      </div>
+      <div class="guide-block" style="background:#f0fdf4;border-color:#bbf7d0">
+        <div class="gl" style="color:#15803d">Keep this bullet — it's valid and will be visible</div>
+        <span class="keep">"Any javax.* → jakarta.* import swaps"</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">10</span><span class="card-title">Exercise 2 — fix the app URL</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Change</div>
+        <span class="rem">http://localhost:9081/simple.war/dashboard</span><br />
+        <span class="keep">http://localhost:9081/simple-pharmacy/dashboard</span>
+      </div>
+      <p class="note" style="margin-top:6px">pom.xml sets finalName=simple-pharmacy so the WAR deploys as simple-pharmacy.war, not simple.war.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="num">11</span><span class="card-title">Troubleshooting — remove Issue 5 (ActionSupport rewrite failures)</span><span class="tag tag-guide">Guide</span></div>
+    <div class="body">
+      <div class="guide-block">
+        <div class="gl">Remove entirely — then renumber remaining issues</div>
+        <span class="rem">Issue 5: "Compile Failures After ActionSupport Rewrite" — only applies to a Struts 7 upgrade which is out of scope for this lab.</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>Made with IBM Bob</footer>
+</div>
+</body>
+</html>

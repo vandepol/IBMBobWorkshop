@@ -1,0 +1,24 @@
+.DS_Store
+node_modules/
+.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Build output
+target/
+labs/track1-incident-workflow/*/build/
+labs/track1-incident-workflow/*/dist/
+
+# Lab runtime state
+labs/track1-incident-workflow/local-service-desk/data.json
+labs/track1-incident-workflow/local-service-desk/server.log
+labs/track1-incident-workflow/bank-app/nginx-lb.conf
+workshop/video-recording/runs/*
+!workshop/video-recording/runs/.gitkeep
+
+# Facilitator-only material (kept locally / on Box, not published)
+facilitator/
