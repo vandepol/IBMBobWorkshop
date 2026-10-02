@@ -62,7 +62,9 @@ Before starting this lab, ensure you have the following installed:
 
 ### 2. SDKMAN! (SDK Manager)
 
-SDKMAN! is a tool for managing parallel versions of multiple Software Development Kits on Unix-based systems. The Liberty Replatforming workflow can install its own tools, but a working shell setup helps. On macOS the default shell is **zsh**.
+SDKMAN! is a tool for managing parallel versions of multiple Software Development Kits on Unix-based systems. The Liberty Replatforming workflow can install its own tools, but it needs SDKMAN itself to be installed — the workflow will not continue without it. On macOS the default shell is **zsh**.
+
+> ⚠️ **macOS:** SDKMAN's installer now needs Bash 4+, and macOS ships Bash 3.2. Run `brew install bash` and open a new terminal *before* the `curl … | bash` line, or it stops with "SDKMAN requires Bash 4 or higher". SDKMAN is required by the Java Modernization workflow — it will not continue without it.
 
 **Installation Instructions:**
 ```bash
@@ -96,11 +98,12 @@ java -version
 sdk list java | grep " 8\."
 ```
 
-**Confirmed working on Apple Silicon:** `8.0.492-zulu`
+**Pick the newest Zulu 8 build** (pinned identifiers such as `8.0.492-zulu` and `8.0.432-tem` have been withdrawn; `8.0.504+1-zulu` was current on 2 Oct 2026):
 ```bash
-sdk install java 8.0.492-zulu
-sdk default java 8.0.492-zulu
-java -version
+JAVA8=$(sdk list java | grep -o '8\.0\.[0-9]*[^ ]*-zulu' | grep -v fx | sort -V | tail -1)
+sdk install java "$JAVA8"
+sdk default java "$JAVA8"
+java -version   # should show 1.8
 ```
 
 **Alternative installation methods (non-SDKMAN):**
@@ -173,7 +176,7 @@ You can control what Bob does automatically using the permissions selector in th
 
 Launch your IDE with IBM Bob installed, then open **this exact folder** as the project root:
 ```
-Bobathon/ce-labs/lab1-java-liberty-replatforming/snapA-java-liberty-replatforming
+Bobathon/labs/lab1-java-liberty-replatforming/snapA-java-liberty-replatforming
 ```
 
 > **Important**: The Java Modernization workflow only appears when Bob is opened at the `snapA-*` subfolder, NOT the parent `lab1-*` folder.
@@ -211,7 +214,7 @@ Use Bob's Java Modernization workflow to migrate the pharmacy app from Tradition
 2. **Analyze — Analyze Java Project**
    - The project path should auto-populate to the `snapA` folder. Confirm it reads:
      ```
-     Bobathon/ce-labs/lab1-java-liberty-replatforming/snapA-java-liberty-replatforming
+     Bobathon/labs/lab1-java-liberty-replatforming/snapA-java-liberty-replatforming
      ```
    - Leave "Custom build command" blank.
    - Click **Continue**.
@@ -228,7 +231,7 @@ Use Bob's Java Modernization workflow to migrate the pharmacy app from Tradition
 4. **Upgrade — Provide the AMA migration plan**
    - Paste the full path to the migration plan ZIP file:
      ```
-     [your local path]/Bobathon/ce-labs/lab1-java-liberty-replatforming/simple-pharmacy.war_migrationPlan.zip
+     [your local path]/Bobathon/labs/lab1-java-liberty-replatforming/simple-pharmacy.war_migrationPlan.zip
      ```
    - Click **Continue**. Bob will analyze the plan and create a to-do list for modernization.
 
@@ -328,7 +331,7 @@ mvn: command not found
 
 **Symptom:** `java -version` in Bob's terminal shows a different version than expected.
 
-**Solution:** `sdk use java <identifier>` only applies to the shell it was run in — Bob's terminal is a separate shell. Run `sdk use java 8.0.492-zulu` in Bob's terminal specifically, or set the global default with `sdk default java 8.0.492-zulu`.
+**Solution:** `sdk use java <identifier>` only applies to the shell it was run in — Bob's terminal is a separate shell. Run `sdk use java <your 8.0.x-zulu identifier>` in Bob's terminal specifically, or set the global default with `sdk default java <identifier>`.
 
 ---
 

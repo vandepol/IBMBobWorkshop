@@ -64,6 +64,8 @@ Before starting this lab, ensure you have the following installed:
 
 SDKMAN! is a tool for managing parallel versions of multiple Software Development Kits on Unix-based systems.
 
+> ⚠️ **macOS:** SDKMAN's installer now needs Bash 4+, and macOS ships Bash 3.2. Run `brew install bash` and open a new terminal *before* the `curl … | bash` line, or it stops with "SDKMAN requires Bash 4 or higher". SDKMAN is required by the Java Modernization workflow — it will not continue without it.
+
 **Installation Instructions:**
 ```bash
 curl -s "https://get.sdkman.io" | bash
@@ -96,14 +98,15 @@ java -version
 sdk list java | grep " 8\."
 ```
 
-**Confirmed working on Apple Silicon:** `8.0.492-zulu`
+**Pick the newest Zulu 8 build** (pinned identifiers such as `8.0.492-zulu` and `8.0.432-tem` have been withdrawn; `8.0.504+1-zulu` was current on 2 Oct 2026):
 ```bash
-sdk install java 8.0.492-zulu
-sdk use java 8.0.492-zulu
+JAVA8=$(sdk list java | grep -o '8\.0\.[0-9]*[^ ]*-zulu' | grep -v fx | sort -V | tail -1)
+sdk install java "$JAVA8"
+sdk default java "$JAVA8"
 java -version   # should show 1.8
 ```
 
-> **Note:** Use `sdk use` (not `sdk default`) here — you only need Java 8 active for this shell session. Bob will switch the default to Java 21 once the workflow runs.
+> **Note:** Use `sdk default`, not `sdk use`. `sdk use` only affects the current shell, and Bob runs its builds in its own shell, so it would not see Java 8.
 
 ### 4. Maven (via SDKMAN!)
 
@@ -224,7 +227,7 @@ Bob will present a modernization type selector. Make the following choices:
 | Setting | Value |
 |---|---|
 | **Modernization Type** | Java Upgrade |
-| **Git Flow** | Disabled (toggle **off**) |
+| **Git Flow** | Disabled (toggle **off** — it is on by default) |
 
 Click **Continue**.
 
@@ -239,10 +242,10 @@ Bob will display the Java Upgrade configuration panel. Enter the following setti
 | Setting | Value |
 |---|---|
 | **Java Distribution** | Semeru (IBM) |
-| **Target Java Version** | 21 |
-| **Jakarta EE Migration** | Enabled (toggle **on**), target **Jakarta EE 10** |
+| **Java Version** | Java 21 |
+| **Jakarta EE Version** | Jakarta EE 10 (dropdown) |
 
-Click **Run Recipes**.
+Click **Continue**. (Bob 2.2.1 labels this button *Continue* and uses a Jakarta EE dropdown rather than a toggle; older builds showed *Run Recipes*.)
 
 ![Java Upgrade Configuration panel with Semeru, Java 21, and Jakarta EE 10 selected](screenshots/screenshot-2026-07-10-at-2.20.40-pm.png)
 
@@ -275,7 +278,7 @@ Once all subtasks complete, Bob will display a **visual modernization summary**.
 - ✅ Jakarta EE **10** migration applied
 - ✅ Build passes with **no errors**
 - ✅ Security vulnerabilities **resolved**
-- ✅ All changes committed to your branch
+- ✅ Changed files listed (committed to a branch only if Git Flow was on)
 
 Bob also prints a **per-task cost and token breakdown** — total cost is typically ~3–5 Bob coins for this lab. The summary lists the individual commits made during the process.
 
@@ -285,9 +288,13 @@ Bob also prints a **per-task cost and token breakdown** — total cost is typica
 
 ### Inspect the diff
 
-Bob's automated namespace changes are a key learning moment. Open a few of the modified files under `src/main/java/com/pharmacy/action/` and look for:
+Bob's automated namespace changes are a key learning moment. Look at `pom.xml` and `src/main/webapp/WEB-INF/web.xml`:
 
-- Any `javax.*` → `jakarta.*` import swaps
+- `javax.servlet` / `javax.servlet.jsp` dependencies → `jakarta.servlet` / `jakarta.servlet.jsp`
+- `web.xml` moved to the `jakarta.ee` namespace, version 6.0
+- Compiler configuration now `<release>21</release>`
+
+The Java classes under `src/main/java/com/pharmacy/` never imported `javax.*`, so there are no import swaps there — the recipe only added `@Serial` to `serialVersionUID` fields.
 
 ### Compile check
 
@@ -311,8 +318,10 @@ Prompt Bob in the chat to start the application:
 
 Once the application is running, confirm functionality by navigating to:
 ```
-http://localhost:9081/simple-pharmacy/dashboard
+http://localhost:9081/simple-pharmacy.war/dashboard
 ```
+
+(`server.xml` sets no context root, so the path includes `.war`. If Bob adds `context-root="/simple-pharmacy"`, drop the `.war`.)
 
 > **Tip:** If you encounter any errors starting the application, paste the output directly into the Bob chat for debugging.
 
@@ -336,7 +345,7 @@ http://localhost:9081/simple-pharmacy/dashboard
 
 **Symptom:** After the workflow finishes, `java -version` in Bob's terminal still shows `1.8`.
 
-**Solution:** The workflow-installed Java 21 becomes the SDKMAN default. Open a fresh terminal (or run `sdk use java 21.0.11-semeru`) to activate it in your current shell.
+**Solution:** The workflow-installed Java 21 becomes the SDKMAN default. Open a fresh terminal (or run `sdk use java 21.0.12-sem` — SDKMAN's Semeru identifiers end in `-sem`; run `sdk list java | grep sem` for the current one) to activate it in your current shell.
 
 ---
 

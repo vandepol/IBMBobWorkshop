@@ -42,7 +42,7 @@ Track 1 needs no ServiceNow instance or credentials. A ServiceNow-compatible Loc
 Clone the repo to the same path on every VM (for example `~/workshop/IBMBobWorkshop`). Then do each track's laptop setup once on the image, and check before you snapshot it:
 
 - **Track 1:** Bob ⚙ → MCP shows **servicenow**, **terraform** and **ansible** as **Connected** with `labs/track1-incident-workflow` open.
-- **Track 2 Java:** Bob's ▶ workflow list shows **Java Modernization** with the `snapB-java-upgrade` folder open.
+- **Track 2 Java:** Bob's ▶ workflow list shows **Java Modernization** with the `snapB-java-upgrade` folder open, `sdk version` works (the workflow requires SDKMAN), and a one-line chat prompt to Bob gets an answer and moves ⚙ → General → **Usage** above `0.0000`. A team whose model access is refused still runs the recipes and builds, but every agent step silently does nothing.
 - **Track 2 Z:** **Z Code** and **Z Architect** appear in the mode selector.
 
 ## Resetting between runs
