@@ -176,22 +176,30 @@ Bob now works the dependency problems **one at a time**, and asks before each ch
 
 ### The one to pay attention to: Javassist
 
-The project depends on `javassist 3.20.0-GA`, whose POM is malformed in a way that breaks the Java 21 build. Bob will:
-1. Explain the root cause — not just "the build failed"
-2. Propose a specific fix: a `<dependencyManagement>` block pinning javassist to a version whose POM parses
-3. Ask you to approve it
-
-> ℹ️ In the 2 October 2026 verification run (Bob 2.2.1, warm `~/.m2`), the post-recipe build reported **0 errors and 1 warning**, so no Javassist prompt appeared. Whether you see it depends on what the build trips over. If it doesn't come up, use the time on the CVE scan below and on the diff in the debrief.
+The project pulls in `javassist 3.20.0-GA` transitively (`struts2-core → ognl → javassist`), and its POM trips a Maven warning on Java 21. The post-recipe build reports *"0 errors and 1 warning"* and Bob starts a **Fix build issues** sub-agent, which will:
+1. Read `pom.xml` and explain the root cause — not just "the build failed"
+2. Run `mvn dependency:tree` to confirm the chain before changing anything
+3. Propose a specific fix — a `<dependencyManagement>` block pinning javassist to `3.29.2-GA` — and ask **Yes, proceed** / **No, skip this change**
+4. Open a side-by-side **diff preview of `pom.xml`** and wait for you to approve the edit
+5. Re-run the build and summarise *Change / Root cause / Fix / Validation* in a table
 
 **Read the rationale before you approve.** This is the moment the lab is built around. A find-and-replace tool gives you a broken build and an error log. This gave you a diagnosis and a named fix, and then waited for a human to agree.
 
-Where Bob offers *"show me the exact edits before applying them"*, take it at least once. Seeing the diff before it touches your `pom.xml` is the answer to half the questions your architecture review board will ask.
+Look at the diff preview before you approve it. Seeing the exact edit before it touches your `pom.xml` is the answer to half the questions your architecture review board will ask. (Bob 2.2.1 shows this preview automatically; there is no separate *"show me the exact edits"* option.)
 
 ### The CVE scan
 
 After the build pass, the workflow hands over to **Java Vulnerability Remediation**. Bob scans the dependencies again (about ten findings), then asks *"Do you want to proceed with fixing the detected vulnerabilities?"* with **Yes, resolve all** / **Yes, select subset** / **No**. Choose **Yes, resolve all**.
 
-Afterwards, check `pom.xml`: the Struts 2 version should have moved off `2.5.33`. If it hasn't, and the *Fix Vulnerabilities* subtask "completed" in a second or two, the agent never ran — see *Agent steps finish instantly* in Troubleshooting.
+Bob plans the fixes (under a minute), then runs **Fix Vulnerabilities** and **Validate Fixes** sub-agents. Expect `struts2.version` to move from `2.5.33` to `6.8.0` and `<dependencyManagement>` overrides for commons-fileupload, commons-io, FreeMarker and commons-lang3, each commented with its GitHub advisory ID. The validation ends with *"10 of 10 CVEs addressed"* and `BUILD SUCCESS`.
+
+> 🚩 **Two things that stall rooms here:**
+> - When a sub-agent finishes its write-up it can stop with an **End subtask** link at the bottom right and no spinner. Click **End subtask** — the workflow then moves on by itself.
+> - **Don't type in the chat while the workflow is running.** A message is sent as a *steer* to whichever sub-agent is active and cancels any command waiting for approval.
+>
+> Each new shell command asks for approval. *Approve for task* covers repeats of that command, *Approve subtask tools for task* covers a sub-agent's non-command tools, and *Approve edit tools for task* covers its later edits.
+
+If the *Fix Vulnerabilities* subtask "completes" in a second or two and `pom.xml` still says `2.5.33`, the agent never ran — see *Agent steps finish instantly* in Troubleshooting.
 
 Consider what just happened: a version upgrade turned into a vulnerability remediation without you scoping it as one. For most institutions those are two separate programmes of work with two separate business cases.
 
@@ -199,7 +207,7 @@ Consider what just happened: a version upgrade turned into a vulnerability remed
 
 ## 0:48–0:54 · Green build, and what it cost
 
-**Validation** — Bob runs `mvn clean install` under Java 21. You are looking for:
+**Final step / Validation** — Bob runs `mvn clean compile` and `mvn clean install` under Java 21. You are looking for:
 
 ```
 BUILD SUCCESS
@@ -214,7 +222,7 @@ BUILD SUCCESS
 | Build | No errors |
 | Security | Vulnerabilities resolved |
 | Changes | Listed as *N files changed* (committed only if Git Flow was on — it is off in this lab) |
-| **Cost** | Typically **3–5 Bob coins**, with a per-task breakdown |
+| **Cost** | About **1.5–5 Bob coins**, with a per-task breakdown (1.69 across 5 subtasks in the 2 Oct 2026 run) |
 
 That last row is the one to linger on. The tool is telling you what the work cost, itemised by subtask. Whatever you think of the number, an AI vendor putting a per-task meter in front of you is not the norm, and it is what makes a real business case arithmetically possible rather than a matter of faith.
 
@@ -226,11 +234,11 @@ That last row is the one to linger on. The tool is telling you what the work cos
 
 Click **Show all** next to *N files changed* at the bottom of the Bob panel, or open the files directly:
 
-- `pom.xml` — `javax.servlet-api 3.1.0` is now `jakarta.servlet-api 6.0.0`, `javax.servlet.jsp-api` is now `jakarta.servlet.jsp-api 3.1.1`, the compiler plugin reads `<release>21</release>`, and any dependency overrides Bob added for Javassist or CVEs are here too.
+- `pom.xml` — `javax.servlet-api 3.1.0` is now `jakarta.servlet-api 6.0.0`, `javax.servlet.jsp-api` is now `jakarta.servlet.jsp-api 3.1.1`, Struts is `6.8.0`, the compiler plugin reads `<release>21</release>`, and the `<dependencyManagement>` block holds the Javassist pin and the CVE overrides.
 - `src/main/webapp/WEB-INF/web.xml` — the `xmlns.jcp.org/xml/ns/javaee` 3.1 descriptor is now `jakarta.ee/xml/ns/jakartaee` 6.0.
 - `src/main/java/com/pharmacy/action/DashboardAction.java` — the Struts actions never imported `javax.*`, so there is no import swap to see; the recipe added `@Serial` to `serialVersionUID`.
 
-Then ask the awkward question: `javax.servlet:jstl 1.2` and Struts 2.5 are both still `javax`-based. The build is green; will the app actually *run* on a Jakarta EE 10 server? Optional extra A answers that.
+Then ask the awkward question: `javax.servlet:jstl 1.2` and Struts 6 are both still `javax`-based, and `src/main/liberty/config/server.xml` still enables `servlet-3.1` and `jsp-2.3`. The build is green; will the app actually *run*? Optional extra A answers that — and the answer is "not yet".
 
 This is the part that decides whether you trust it. Not the summary graphic — the diff.
 
@@ -268,7 +276,15 @@ http://localhost:9081/simple-pharmacy.war/dashboard
 
 Liberty itself is downloaded by the Liberty Maven plugin the first time — no Docker required.
 
-If startup throws errors, paste them straight into Bob's chat. That debugging loop is a genuine part of the experience and worth doing unhurried.
+**Expect it to fail first time.** The workflow does not touch `server.xml`, so Liberty still provisions `servlet-3.1`/`jsp-2.3` and rejects the upgraded descriptor:
+
+```
+CWWKZ0002E: An exception occurred while starting the application simple-pharmacy.war ...
+CWWKC2263E: The webapp : WEB-INF/web.xml deployment descriptor on line 5 specifies version 60,
+which is higher than the current provisioned version 31.
+```
+
+Both URLs return 404 until it is fixed. Paste that error straight into Bob's chat. The real fix is to move `server.xml` to Jakarta EE 10 features (for example `servlet-6.0`, `pages-3.1`) and Struts to a Jakarta-based 7.x release with a matching JSTL — a good, unhurried example of the debugging loop, and of why a green build is not the finish line.
 
 ## B · Audit the namespace migration *(~5 min)*
 
@@ -318,10 +334,12 @@ The replatforming story, and the logical predecessor to this lab. Requires Java 
 | Baseline build is very slow | `~/.m2` is not warm on this image — tell your track lead |
 | `mvn` reports a different JDK than `java -version` | Maven uses `JAVA_HOME`, which can differ from the shell default. Normal at this stage; Bob manages it during the upgrade |
 | Build still fails after the recipes | Paste the full error into Bob's chat. Working the error loop in conversation is part of the lab |
-| Bob wants to change something you do not understand | Choose *"show me the exact edits before applying them"*, and ask it why in chat before approving |
+| Bob wants to change something you do not understand | Read the diff preview Bob opens before *Apply Diff*, choose **Reject** or **No, skip this change**, and ask it why in chat (only while nothing is waiting for approval) |
 | Port 9081 already in use *(optional extra A)* | `./stop-liberty.sh` in the lab directory |
 | *"SDKMAN requires Bash 4 or higher"*, or Bob shows *"Failed to install SDKMan: true"* | macOS ships Bash 3.2. Run `brew install bash`, open a new terminal (or restart Bob), then click **Retry** in the workflow |
 | `sdk install java 8.0.492-zulu` → *not a valid candidate version* | That build was withdrawn. `sdk list java \| grep zulu` and install the newest `8.0.x-zulu` (8.0.504+1-zulu on 2 Oct 2026) |
 | Bob never offered to install Java 21 | A JDK 21 was already installed, so Bob used it. Expected — carry on |
-| **Agent steps finish instantly**, *"Request Failed — An unexpected error occurred"*, Usage stays at 0.0000, nothing changes in `pom.xml` | Bob's model calls are being refused. The log (`~/Library/Application Support/IBM Bob/logs/<latest>/window*/exthost/IBM.bob-code/IBM Bob.log`) shows `ProviderError … Caused by: Forbidden` and `ModelInfoError`. Check the team selected in ⚙ Settings → General, sign out and back in, and confirm the team's plan hasn't lapsed. Fix this before continuing — the deterministic steps (recipes, builds, scans) still run, which hides the problem |
+| **Agent steps finish instantly**, *"Request Failed — An unexpected error occurred"*, Usage stays at 0.0000, nothing changes in `pom.xml` | Bob's model calls are being refused. The log (`~/Library/Application Support/IBM Bob/logs/<latest>/window*/exthost/IBM.bob-code/IBM Bob.log`) shows `ProviderError … Caused by: Forbidden` and `ModelInfoError`. **Sign out of Bob and sign back in** — a stale stored session causes this, and re-login fixed it in the verification run. If it persists, check the team selected in ⚙ Settings → General. Fix this before continuing — the deterministic steps (recipes, builds, scans) still run, which hides the problem |
+| A sub-agent's write-up ends and nothing happens; an **End subtask** link sits at the bottom right | Click **End subtask**. The workflow resumes with the next step |
+| A command shows *Command cancelled* | You typed in the chat while it was waiting for approval. Ask Bob to continue, then approve the command again |
 | Pop-ups on first open (*Install GitHub Copilot modernization extension*, C++ IntelliSense, "open the parent git repository?") | Not part of the lab. Choose **Not Now** / **Never** |
