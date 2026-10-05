@@ -2,7 +2,7 @@
   "mcpServers": {
     "bob-marketplace": {
       "type": "streamable-http",
-      "url": "http://127.0.0.1:60035/mcp",
+      "url": "http://127.0.0.1:39247/mcp",
       "headers": {
         "Bob-Marketplace-Token": "bob-marketplace-local"
       },
@@ -14,6 +14,13 @@
         "list_favorites",
         "suggest_assets",
         "list_updates"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
       ]
     }
   }
