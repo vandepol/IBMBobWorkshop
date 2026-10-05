@@ -1,212 +1,517 @@
-# Track 2 — IBM Bob, Premium Package for Java
-## Lab: Java 8 to Java 21, done by an agent that shows its work
+# IBM Bob — Java Upgrade Lab
+## Simple Pharmacy: Java 8 → Java 21 and Jakarta EE 10, running on Liberty
 
-**Time:** 60 minutes
-**Environment:** pre-baked sandbox VM — nothing to install. Or your own laptop — see *Running on your own laptop* below.
-**Bob tier:** Premium (includes the Java Modernization workflow suite)
+<sub>⏱ About 90 minutes in total · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1, 2 October 2026</sub>
 
 ---
 
-## What you are about to do
-
-The Simple Pharmacy application runs on Liberty, on **Java 8**, with Struts. You are going to put it on **Java 21** with **Jakarta EE 10** — namespace migration, dependency conflicts, CVE scan and all — in under an hour, using Bob's Java Modernization workflow.
-
-This is the lab that matters most to a bank with a large legacy Java estate, because the thing standing between you and a supported runtime is rarely the code change itself. It is the long tail of dependency breakage nobody wants to own.
-
-**By the end you will have seen:**
-- A structured, phased workflow — **Analyze → Upgrade → Validate** — not a chat window
-- Bob **installing the target JDK itself** when it finds it missing
-- **OpenRewrite recipes** applied across the codebase, `javax.*` → `jakarta.*`
-- Bob hitting a genuinely broken dependency, diagnosing the root cause, and proposing a specific fix **for your approval**
-- A **CVE scan** mid-migration with a remediation prompt
-- A green build, and a summary telling you what it cost
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Prerequisites](#prerequisites)
+3. [What to watch for](#what-to-watch-for)
+4. [The Java Modernization workflow](#the-java-modernization-workflow)
+5. [Setting up](#setting-up)
+6. [Exercise 1: Run the Java Upgrade workflow](#exercise-1-run-the-java-upgrade-workflow)
+7. [Exercise 2: Read what changed](#exercise-2-read-what-changed)
+8. [Exercise 3: Run the upgraded application](#exercise-3-run-the-upgraded-application)
+9. [Troubleshooting](#troubleshooting)
+10. [Conclusion](#conclusion)
 
 ---
 
-## Running on your own laptop
+# Introduction
 
-Do this **before** the session; it downloads a JDK and Maven dependencies. On the sandbox VM it has already been done.
+### The application
+
+The **Simple Pharmacy Management System** is a small Struts web application that manages:
+- **Prescriptions** — create and validate patient prescriptions
+- **Orders** — process medication orders and payments
+- **Medicines** — the medicine inventory
+- **Dashboard** — pending prescriptions and orders at a glance
+
+### What a Java upgrade involves
+
+Moving an application from Java 8 to a current LTS release is rarely just a compiler flag. It usually means:
+- **Namespace changes** — `javax.*` (Java EE) becomes `jakarta.*` (Jakarta EE)
+- **Dependency upgrades** — libraries that pin old Java versions, or carry known vulnerabilities
+- **Build and configuration updates** — compiler settings, plugin versions, deployment descriptors
+- **Framework migrations** — frameworks that changed their own APIs to support Jakarta EE
+
+## About this lab
+
+You will use **Bob's Java Modernization workflow** (Java Upgrade) to move the pharmacy app to Java 21 and Jakarta EE 10, then use Bob's chat to finish the job and get the application running on Liberty.
+
+| | Before | After |
+|---|---|---|
+| Java | 8 | **21** (IBM Semeru) |
+| Enterprise APIs | Java EE 7 (`javax.*`) | **Jakarta EE 10** (`jakarta.*`) |
+| Struts | 2.5.33 | **7.x** |
+| Liberty features | `servlet-3.1`, `jsp-2.3` | **`servlet-6.0`, `pages-3.1`** |
+| Known vulnerabilities | 10 | **0** |
+
+## Learning objectives
+
+By the end of this lab you will have:
+- Run a structured, phased modernization workflow — **Analyze → Upgrade → Validate** — not a chat prompt
+- Approved dependency fixes after reading Bob's root-cause analysis and the exact diff
+- Seen a version upgrade turn into a vulnerability remediation, with advisory IDs
+- Read Bob's per-task cost breakdown
+- Seen the original application running on Java 8, and the upgraded one running on Java 21
+- Watched Bob diagnose a failing deployment from a one-line request, and understood why *builds* and *runs* are two different milestones
+
+---
+
+# Prerequisites
+
+<sub>⏱ About 15 minutes — do this before the session. On the sandbox VM it has already been done.</sub>
+
+### 1. IBM Bob
+- IBM Bob IDE installed and signed in
+- A Bob team that includes the **Premium Package for Java** (Bob ⚙ → *General* lists it under *Add-ons*)
+
+### 2. A modern Bash (macOS only)
+
+SDKMAN's installer needs **Bash 4 or newer**; macOS ships Bash 3.2. Without this step the install stops with *"SDKMAN requires Bash 4 or higher"*, and Bob's own **Install SDKMan** button fails the same way.
 
 ```bash
-# SDKMAN, Java 8 (the lab's starting point) and Maven
+brew install bash        # needs Homebrew (admin rights); on a locked-down laptop use the sandbox VM
+bash --version           # should report 5.x — open a new terminal first
+```
+
+### 3. SDKMAN, Java 8 and Maven
+
+SDKMAN is **required**: the workflow checks for it before it will continue (Windows uses WinGet instead).
+
+```bash
 curl -s "https://get.sdkman.io" | bash
 source "$HOME/.sdkman/bin/sdkman-init.sh"
-sdk install java 8.0.492-zulu      # Zulu: Temurin 8 is not available on Apple Silicon
-sdk default java 8.0.492-zulu
-sdk install maven
 
-# The lab code, with Maven's cache warmed so the first build isn't a cold download
+# Newest Zulu 8 build — pinned identifiers like 8.0.492-zulu get withdrawn over time
+JAVA8=$(sdk list java | grep -o '8\.0\.[0-9]*[^ ]*-zulu' | grep -v fx | sort -V | tail -1)
+sdk install java "$JAVA8"
+sdk default java "$JAVA8"    # 'default', not 'use': Bob runs builds in its own shell
+sdk install maven
+```
+
+Don't install Java 21 yourself — Bob offers to install it during the lab. (If a Java 21 is already installed, Bob uses it and skips that step; the lab still works.)
+
+### 4. The lab code, with Maven's cache warmed
+
+```bash
 git clone https://github.com/vandepol/IBMBobWorkshop
 cd IBMBobWorkshop/labs/track2-java-upgrade
 mvn -B dependency:go-offline && mvn -B clean
 ```
 
-Don't install Java 21 yourself: Bob offers to install it during the lab, and that is one of the moments worth seeing. Then **fully quit and restart Bob** so it picks up the SDKMAN tools. Your Bob account needs the **Premium Package for Java** entitlement.
+### 5. Restart Bob
+
+Fully quit and reopen Bob so it picks up SDKMAN, Java and Maven.
+
+> No Docker is needed. Liberty is downloaded by the Liberty Maven plugin the first time you run the app.
 
 ---
 
-## 0:00–0:05 · Smoke test
+# What to watch for
 
-Everything is pre-installed. This catches a bad image while there is still time.
+- **Bob installs the JDK itself** when Java 21 is missing — environment management, not just code changes.
+- **OpenRewrite recipes** applied across the codebase: `javax` → `jakarta`, compiler settings, plugins.
+- **A diagnosed dependency fix** — root cause, a named fix, and a diff, waiting for your approval.
+- **A vulnerability scan mid-migration**, and a remediation that lists every advisory it closed.
+- **A per-task cost breakdown** in the final summary.
+
+---
+
+# The Java Modernization workflow
+
+* **Analyze** — Bob inspects the project, checks dependencies for known vulnerabilities and runs a baseline build
+* **Upgrade** — Bob applies OpenRewrite recipes, then works through build issues and vulnerabilities with your approval
+* **Validate** — Bob rebuilds, cross-checks every fix and produces a visual summary with costs
+
+## Approvals
+
+Bob asks before it runs commands or edits files:
+- **Approve once** — this action only
+- **Approve for task** — this command for the rest of the task
+- **Approve subtask tools for task / Approve edit tools for task** — a sub-agent's tools or edits for the rest of the task
+- Shell commands may carry a **Security warning**: tick **I understand the risk**, then **Approve**
+
+> 💡 **Don't type in the chat while the workflow is running.** A message is sent to whichever sub-agent is active and cancels any command that is waiting for approval.
+
+---
+
+# Setting up
+
+<sub>⏱ About 5 minutes</sub>
+
+### 1. Smoke test
 
 ```bash
-java -version    # 1.8.0_492, Zulu — Java 8 is the STARTING state
-mvn -version     # 3.6+
+java -version    # 1.8.0_xxx — Java 8 is the starting point
+mvn -version     # 3.6+, and its "Java version" line should also say 1.8
+sdk version      # SDKMAN must be present
 ```
 
-In your IDE, open **this exact folder** as the project root:
+### 2. Open the snapshot folder as the project root
+
+In Bob: **File → Open Folder** → `labs/track2-java-upgrade`
 
 ```
 IBMBobWorkshop/labs/track2-java-upgrade
 ```
 
-(On the sandbox VM the repo is at `~/workshop/IBMBobWorkshop`.)
+> 🚩 Open the **`track2-java-upgrade`** folder itself (the one containing `pom.xml`), not `labs/` or the repo root. The workflow only appears when Bob is opened at the project folder.
+>
+> The screenshots in this guide were taken with the folder named `snapB-java-upgrade`; yours will say `track2-java-upgrade`.
 
-> 🚩 **It must be the `track2-java-upgrade` folder itself (the one containing `pom.xml`), not `labs/` or the repo root.** The Java Modernization workflow only appears when Bob is opened at the project folder. This is the most common way to lose ten minutes on this lab.
+You may see a few first-run pop-ups — *Install GitHub Copilot modernization extension*, *C++ IntelliSense*, *open the parent git repository*. They aren't part of the lab: choose **Not Now** / **Never**.
 
-Then confirm, in Bob's chat panel:
-- The mode indicator at the bottom reads **Agent**
-- Pressing the **▶** button at the top shows **Java Modernization** in the workflow list
+### 3. Confirm the workflow is available
 
-> 🚩 **No Java Modernization workflow?** Your account lacks the Premium entitlement. Raise your hand now — this lab cannot run without it, and there is a standard-Bob track you can join.
+Click the **▶** (play) button in the Bob panel's toolbar, top right — the first icon, left of the gear:
 
-### ✋ CHECKPOINT 1 — *everyone sees the Java Modernization workflow*
+![The play button in the Bob panel toolbar opens Bob workflows](images/track2-java/01a-open-workflows-button.png)
+
+If Bob asks which workspace to use, pick **track2-java-upgrade**. **Java Modernization** should be in the list.
+
+![Bob workflows list with Java Modernization](images/track2-java/01-workflow-list.png)
+
+> 🚩 **No Java Modernization?** Your Bob team doesn't include the Premium Package for Java.
+
+### 4. See the original application running on Java 8
+<sub>⏱ About 5 minutes (the first run downloads Liberty)</sub>
+
+Before changing anything, see what you're modernizing. In a terminal, from the `labs/track2-java-upgrade` folder:
+
+```bash
+java -version     # 1.8.0_xxx
+mvn -version      # its "Java version" line must also say 1.8
+mvn liberty:run
+```
+
+Wait for `CWWKZ0001I: Application simple-pharmacy.war started`, then open:
+
+| Page | URL |
+|---|---|
+| Dashboard | http://localhost:9081/simple-pharmacy.war/dashboard |
+| Prescriptions | http://localhost:9081/simple-pharmacy.war/prescription-list |
+| Orders | http://localhost:9081/simple-pharmacy.war/order-list |
+| Medicines | http://localhost:9081/simple-pharmacy.war/medicine-list |
+
+![The original pharmacy dashboard on Java 8](images/track2-java/00-java8-dashboard.png)
+
+![The original prescription list on Java 8](images/track2-java/00-java8-prescriptions.png)
+
+Note what you see — **3 prescriptions, RX001 pending**, and its *View* and *Validate* buttons. You'll compare against this in Exercise 3.
+
+Stop the server with **Ctrl+C**, then run `./stop-liberty.sh` to make sure port 9081 is free.
+
+> ⚠️ **Run this step on Java 8.** If `mvn -version` reports a much newer Java (Homebrew's Maven brings its own JDK, Java 24 or later), Struts 2.5's bytecode scanner fails at startup with an ASM error. Point Maven at Java 8 with `export JAVA_HOME="$(sdk home java "$JAVA8")"`, or use SDKMAN's Maven.
+>
+> ℹ️ *Medicines → View* fails in the original application too: `struts.xml` points at a `medicine-view.jsp` that was never written. It's a pre-existing bug, not something the upgrade causes.
 
 ---
 
-## 0:05–0:09 · Start the workflow
+# Exercise 1: Run the Java Upgrade workflow
 
-1. Click the **▶** button at the top of the Bob window
-2. Select **Java Modernization**
-3. Click **▶ Start**
+### 1. Start the workflow
+<sub>⏱ About 1 minute</sub>
 
-Notice what this is not: you did not describe your task in a sentence and hope. You launched a defined process with phases, inputs and a summary at the end. That distinction is most of the enterprise argument for the premium package.
+Click the **▶** (play) button in the Bob panel's toolbar, top right — the first icon, left of the gear — to open the **Bob workflows** list:
 
----
+![The play button in the Bob panel toolbar opens Bob workflows](images/track2-java/01a-open-workflows-button.png)
 
-## 0:09–0:17 · Analyze
+If Bob asks which workspace to use, pick **track2-java-upgrade**. Don't use the *Start* buttons on the *Welcome* page in the editor area — use the workflows list.
 
-**Analyze Java Project**
-- The **Project Path** should auto-populate to the `track2-java-upgrade` folder. Confirm it.
-- Leave **Custom build command** blank.
-- Click **Continue**.
+Find the **Java Modernization** row and click its **Start** button on the right:
 
-Bob now scans the project, detects Java 8, and **runs a baseline build**. It is establishing that the application compiles *before* it changes anything — so that if something breaks later, there is no argument about whether it was already broken.
+![Start button on the Java Modernization row](images/track2-java/01b-start-java-modernization.png)
 
-> ⏱️ On the sandbox this should finish in under three minutes; `~/.m2` is pre-warmed. Considerably longer means the warm cache did not make it into the image — tell your track lead.
+The workflow opens on a short *Getting Started* card — worth ten seconds.
 
-While it builds, open `pom.xml` and find the `maven.compiler.source` and `target` properties. Java 8. Remember what they say.
+### 2. Analyze the project
+<sub>⏱ About 3 minutes</sub>
 
----
-
-## 0:17–0:20 · Choose what kind of modernization
-
-**Select Modernization Type**
-- Modernization Type: **Java Upgrade**
-- Git Flow: **off** *(branch management is outside the scope of this lab)*
+- **Select Project** already points at `track2-java-upgrade`
+- Leave **Custom project path** and **Custom build command** off
 - Click **Continue**
 
-Note the other options on this screen — Liberty Replatforming and UI Modernization are separate labs in the same repo, both available to you afterwards.
+![Analyze Project panel](images/track2-java/02-analyze-project.png)
 
----
+Bob detects the dependencies and asks to **query vulnerabilities** — approve it. It finds about ten, mostly in Struts 2 and Apache Commons. Then it asks to run a **baseline build** (`mvn clean install`) — approve that too. Bob proves the application compiles *before* anything changes, so nobody argues later about whether it was already broken.
 
-## 0:20–0:40 · Configure the upgrade and run the recipes
+While it builds, open `pom.xml` and find the `maven-compiler-plugin`: `<source>1.8</source>` and `<target>1.8</target>`.
 
-This is the longest block in the lab and the one with the most to watch.
+### 3. Choose the modernization type
+<sub>⏱ About 1 minute</sub>
 
-**Java Upgrade Configuration**
-- Java Distribution: **Semeru (IBM)**
-- Target Java Version: **21**
-- Jakarta EE Migration: **on**, target **Jakarta EE 10**
-- Click **Run Recipes**
+- Select **Java Upgrade**
+- Switch **Enable Git Flow** **off** — it is on by default, and branch management is outside this lab
+- Click **Continue**
 
-### The first thing to watch for
+![Flow Selection with Java Upgrade selected and Git Flow off](images/track2-java/03-flow-selection.png)
 
-If Java 21 Semeru is not installed, Bob tells you so and offers an **Install** button. Click it.
+*Liberty Modernization* is greyed out ("Application is already using Liberty"). *UI Modernization* and *Java Unit Testing* are other modernization types, not used in this lab.
 
-**Watch what happens.** Bob installs a JDK via SDKMAN, on its own, and then resumes the workflow where it left off. It did not fail and hand you a task. It did not tell you to go and read an installation guide. It noticed a missing prerequisite in its own environment and fixed it.
+### 4. Prerequisite check
+<sub>⏱ About 1 minute (longer if SDKMAN needs installing)</sub>
 
-Stop and register that, because it reframes what this tool is. Everything else in this lab is code transformation; this is environment management.
+The workflow expands to 14 steps and first checks for SDKMAN. Approve the `sdk version` command. If SDKMAN is missing, Bob offers **Install SDKMan**. On a Mac that only works once a modern Bash is installed:
 
-### Then the recipes run
+![SDKMAN install failing on Bash 3.2](images/track2-java/04-sdkman-bash-error.png)
 
-Bob applies OpenRewrite recipes across the codebase and begins an agentic build pass. You will see:
-- `javax.*` imports rewritten to `jakarta.*`
-- Dependencies updated for Jakarta EE 10
-- Compiler configuration moved to 21
-- Repeated compile attempts as it works through fallout
+Run `brew install bash` in a terminal, then click **Retry**.
 
-Let it run. It will not be silent and it will not be instant.
+### 5. Configure the upgrade
+<sub>⏱ About 2 minutes</sub>
 
-### ✋ CHECKPOINT 2 — *recipes have run and Bob is working through build issues*
-
----
-
-## 0:40–0:48 · Approve the fixes
-
-Bob now works the dependency problems **one at a time**, and asks before each change.
-
-### The one to pay attention to: Javassist
-
-The project depends on `javassist 3.20.0-GA`, whose POM is malformed in a way that breaks the Java 21 build. Bob will:
-1. Explain the root cause — not just "the build failed"
-2. Propose a specific fix: a `<dependencyManagement>` block pinning javassist to a version whose POM parses
-3. Ask you to approve it
-
-**Read the rationale before you approve.** This is the moment the lab is built around. A find-and-replace tool gives you a broken build and an error log. This gave you a diagnosis and a named fix, and then waited for a human to agree.
-
-Where Bob offers *"show me the exact edits before applying them"*, take it at least once. Seeing the diff before it touches your `pom.xml` is the answer to half the questions your architecture review board will ask.
-
-### The CVE scan
-
-Somewhere in this phase Bob runs a **security scan** and asks whether you want the vulnerabilities it found remediated. Say yes.
-
-Consider what just happened: a version upgrade turned into a vulnerability remediation without you scoping it as one. For most institutions those are two separate programmes of work with two separate business cases.
-
----
-
-## 0:48–0:54 · Green build, and what it cost
-
-**Final Build Verification** — Bob runs `mvn clean compile` under Java 21. You are looking for:
-
-```
-BUILD SUCCESS
-```
-
-**Modernization Summary** — Bob then generates a visual summary. Read it properly:
-
-| What to look for | Expected |
+| Setting | Value |
 |---|---|
-| Java version | 1.8 → **21**, IBM Semeru |
-| Jakarta EE | **10** applied |
-| Build | No errors |
-| Security | Vulnerabilities resolved |
-| Changes | Committed |
-| **Cost** | Typically **3–5 Bob coins**, with a per-task breakdown |
+| Java Distribution | **Semeru (IBM)** (preselected) |
+| Java Version | **Java 21** |
+| Jakarta EE Version | **Jakarta EE 10** |
 
-That last row is the one to linger on. The tool is telling you what the work cost, itemised by subtask. Whatever you think of the number, an AI vendor putting a per-task meter in front of you is not the norm, and it is what makes a real business case arithmetically possible rather than a matter of faith.
+Bob describes the upgrade path, rates its complexity and estimates how many vulnerabilities the upgrade can resolve. Read it — you'll come back to it in Exercise 3. Click **Continue**.
 
-### ✋ CHECKPOINT 3 — *everyone has BUILD SUCCESS and a summary on screen*
+![Java Upgrade Configuration with recommendations](images/track2-java/05-upgrade-config.png)
+
+> If Java 21 isn't installed, Bob offers **Install** and sets it up through SDKMAN, then resumes. If it's already installed, Bob goes straight on.
+
+### 6. Run the recipes
+<sub>⏱ About 2 minutes</sub>
+
+Bob proposes two OpenRewrite recipes — `UpgradeToJava21` and `JakartaEE10`. **Approve once.** In about a minute nine files change:
+- `pom.xml` — `javax.servlet`/`javax.servlet.jsp` APIs become `jakarta.*`, the compiler moves to `<release>21</release>`, plugins are upgraded
+- `web.xml` — moves to the Jakarta EE namespace, version 6.0
+- seven Java classes — `@Serial` added to `serialVersionUID`
+
+![Run Rewrite Recipes approval](images/track2-java/06-run-recipes.png)
+
+Bob then rebuilds under Java 21 (approve it): *0 errors, 1 warning*.
+
+### 7. Approve the Javassist fix
+<sub>⏱ About 5 minutes</sub>
+
+Bob starts a **Fix build issues** sub-agent for the warning. Watch how it works:
+1. Reads `pom.xml` and explains the cause — `javassist 3.20.0-GA`, pulled in through `struts2-core → ognl`, has POM problems on Java 21
+2. Runs `mvn dependency:tree` to confirm before changing anything
+3. Proposes a `<dependencyManagement>` block pinning javassist to `3.29.2-GA`, and asks
+
+![Javassist root cause and Yes/No approval](images/track2-java/07-javassist-approval.png)
+
+Choose **Yes, proceed**. Bob then opens a side-by-side diff of `pom.xml` and waits for **Approve once** on *Apply Diff*:
+
+![pom.xml diff preview before the edit is applied](images/track2-java/08-javassist-diff.png)
+
+**Read the rationale before you approve.** A find-and-replace tool would have given you a broken build and an error log. This gave you a diagnosis, a named fix and the exact diff, then waited for a human. Bob re-runs the build and summarises *Change / Root cause / Fix / Validation* in a table.
+
+### 8. Fix the vulnerabilities
+<sub>⏱ About 10 minutes</sub>
+
+The workflow hands over to **Java Vulnerability Remediation**, rescans, and asks:
+
+![Vulnerabilities fixing prompt](images/track2-java/09-cve-confirm.png)
+
+Choose **Yes, resolve all**. Bob plans the fixes (under a minute), then runs a **Fix Vulnerabilities** sub-agent. Approving its tools for the task keeps it moving. Expect:
+- Struts `2.5.33` → `6.8.0`
+- `<dependencyManagement>` overrides for commons-fileupload, commons-io, FreeMarker and commons-lang3, each commented with its GitHub advisory ID
+
+> 🚩 When a sub-agent finishes its write-up it can stop with an **End subtask** link at the bottom right and no spinner. Click **End subtask** — the workflow continues by itself.
+>
+> ![End subtask link after the Fix Vulnerabilities write-up](images/track2-java/10-end-subtask.png)
+
+A **Validate Fixes** sub-agent then cross-checks every advisory and ends with *"10 of 10 CVEs addressed"* and `BUILD SUCCESS`:
+
+![Vulnerability fix validation results](images/track2-java/11-cve-validation.png)
+
+A version upgrade has just turned into a vulnerability remediation, without anyone scoping it as one.
+
+### 9. Final build and summary
+<sub>⏱ About 5 minutes</sub>
+
+A **Final step** sub-agent runs `mvn clean compile` under Java 21 (approve it). Then Bob generates a visual modernization summary and a per-task cost breakdown:
+
+![Workflow summary with per-task costs](images/track2-java/12-summary.png)
+
+| Look for | Expected |
+|---|---|
+| Java version | 1.8 → **21**, Semeru |
+| Jakarta EE | **10** |
+| Build | completed successfully |
+| Security | 10 of 10 advisories resolved |
+| Cost | about **1.5–5 Bob coins**, itemised per subtask (1.69 in the verification run) |
+
+### ✋ Checkpoint — everyone has a successful build and a summary on screen
 
 ---
 
-## 0:54–1:00 · Read what actually changed, then debrief
+# Exercise 2: Read what changed
 
-Open a file Bob touched:
+<sub>⏱ About 5 minutes</sub>
+
+Click **Show all** next to *9 files changed* at the bottom of the Bob panel.
+
+![Bob Edits diff view of pom.xml](images/track2-java/13-show-all-diff.png)
+
+- **`pom.xml`** — `jakarta.servlet-api 6.0.0`, `jakarta.servlet.jsp-api 3.1.1`, Struts `6.8.0`, `<release>21</release>`, and the `<dependencyManagement>` block with the Javassist pin and CVE overrides
+- **`web.xml`** — Jakarta EE namespace, version 6.0
+- **Action classes** — they never imported `javax.*`, so there's no import swap; the recipe added `@Serial`
+
+Discuss before moving on:
+- Would you merge this change?
+- How long would this have taken your team, on one application? How many applications does that multiply by?
+- Where would you still want a human gate, and did the approvals put one there?
+
+---
+
+# Exercise 3: Run the upgraded application
+
+The build is green. The real test is whether the application runs — and this is where you hand Bob a goal rather than instructions.
+
+### 1. Ask Bob to run it
+<sub>⏱ About 2 minutes</sub>
+
+In Bob's chat (with no workflow running), ask what any developer would ask:
 
 ```
-src/main/java/com/pharmacy/action/
+The Java 21 upgrade builds successfully. Can you start the application on Liberty and make sure the pages work?
 ```
 
-Look at the imports. `javax.servlet.*` is now `jakarta.servlet.*`. Open `pom.xml` and find the `<dependencyManagement>` block Bob added, and the compiler properties now reading 21.
+That's all. No error message, no hints about server features or framework versions. Approve Bob's commands as they come up (*Approve for task* keeps it moving).
 
-This is the part that decides whether you trust it. Not the summary graphic — the diff.
+### 2. Watch Bob work out what's wrong
+<sub>⏱ About 15 minutes</sub>
 
-**Take two minutes on these before the regroup:**
-- Would you have merged this change?
-- How long would this upgrade have taken your team, on one application?
-- How many applications does that multiply by?
-- Where would you still want a human gate, and did the approval flow put one there?
+Bob doesn't know the answer up front, and neither do you need to. Watch how it gets there. In the verification run it went like this:
+
+1. **Reads the project first.** It notices `server.xml` still asks Liberty for `servlet-3.1` and `jsp-2.3` while the code now targets Jakarta EE 10, and updates the features to `servlet-6.0` and `pages-3.1`.
+
+   ![Bob spots the server feature mismatch](images/track2-java/14-ex3-prompt-diagnosis.png)
+
+2. **Starts the server and reads the log.** The Struts filter fails to load (`SRVE0321E`). Bob's first theory is the old `javax` JSTL jar; it swaps in the Jakarta one and restarts. The error remains.
+3. **Goes deeper instead of guessing again.** It pulls the full stack trace from Liberty's own log and finds the real cause: `ClassNotFoundException: javax.servlet.Filter`.
+
+   ![Bob finds the root cause in the stack trace](images/track2-java/15-ex3-root-cause.png)
+
+4. **Checks the evidence.** It opens the Struts 6.8 jar, confirms the filter is still built on `javax.servlet`, checks Maven Central, and concludes Jakarta support starts with **Struts 7**.
+
+   ![Bob confirms Struts 7 is required](images/track2-java/16-ex3-struts7.png)
+
+5. **Follows the fallout.** Moving to Struts 7 breaks the build; Bob looks inside the new jar, finds `ActionSupport` moved to `org.apache.struts2`, and fixes all four action classes.
+
+   ![Bob fixes the ActionSupport package move](images/track2-java/17-ex3-actionsupport.png)
+
+6. **Corrects its own mistake.** It had pointed `struts.xml` at a `struts-7.0.dtd` that doesn't exist; it reads the error, checks which DTDs the jar actually ships, and switches to `struts-6.5.dtd`.
+
+   ![Bob corrects the DTD reference](images/track2-java/18-ex3-dtd-fix.png)
+
+Your run may take a different path — that's the point. Notice the loop: read the evidence, form a theory, test it, adjust.
+
+> 🚩 **Watch what you approve.** In the verification run Bob proposed `pkill -f "liberty:run"` to stop its server — that stops *every* Liberty server on the machine. Reject a command like that; Bob switches to `mvn liberty:stop`, which only stops this project's server.
+
+### 3. Check it against the original
+<sub>⏱ About 5 minutes</sub>
+
+Open the dashboard: http://localhost:9081/simple-pharmacy.war/dashboard
+
+The pages load — but compare with what you saw on Java 8. Look closely:
+- Does the dashboard list **RX001** as pending, or say *No pending prescriptions*?
+- Does **View** on a prescription show the patient, doctor and medicine?
+
+If something's missing, describe the symptom to Bob — the way you'd raise a bug, not a fix:
+
+```
+The pages load, but the dashboard says "No pending prescriptions" — on Java 8 it listed RX001.
+Opening a prescription shows a "Parameter injection … rejected" message. Can you find out why and fix it?
+```
+
+This is the last layer of Struts 7: new security rules that are invisible to the compiler and only show up as missing data at runtime.
+
+### 4. Why the build passed but the app didn't run
+<sub>⏱ About 5 minutes</sub>
+
+The Java Upgrade workflow's job ends at a successful build: it rewrites the code, resolves dependencies and vulnerabilities, and proves the result with Maven. Two things sit outside a build, and they only show up when the application is deployed:
+
+1. **Server configuration.** `server.xml` still asked Liberty for the Java EE 7 features, so Liberty refused the Jakarta EE 10 `web.xml`.
+2. **Framework generation.** Struts **6.x** is the newest line that keeps the old programming model, which is why the vulnerability fix chose 6.8.0: it closes every advisory and the action classes compile unchanged. But Struts 6 is still built on `javax.servlet`. **Struts 7** is the first release built for Jakarta EE, and it's a migration rather than a version bump — a package move, plus security rules that decide which request parameters and which classes a page may touch.
+
+None of this appears at compile time — the application's own code never touches the servlet API — so the build was genuinely green. That's normal in modernization work: **build-green and deploy-green are two milestones**. The workflow got you the first; Bob, given a plain goal, worked out the second.
+
+### 5. Verify the application
+<sub>⏱ About 5 minutes</sub>
+
+Check that the upgraded application behaves like the Java 8 one:
+- The dashboard shows **3** prescriptions with **RX001** pending
+- **View** on a prescription shows the patient, doctor and medicine
+- **Create Prescription** offers 9 medicines, saves, and the new row appears in the list
+- **Validate** on RX001 removes it from the dashboard's pending list
+
+Stop the server when you're done (`mvn liberty:stop`, or `./stop-liberty.sh`).
+
+### ✋ Checkpoint — the pharmacy runs on Java 21, Jakarta EE 10 and Struts 7
+
+<details>
+<summary>Instructor reference: the changes that make it run</summary>
+
+Use this to coach a stuck table, not as the prompt. Bob may choose different but equivalent fixes (for example, swapping in the Jakarta JSTL jar instead of removing the unused one).
+
+| File | Change | Why |
+|---|---|---|
+| `server.xml` | `servlet-3.1` → `servlet-6.0`, `jsp-2.3` → `pages-3.1` | Liberty must provide Jakarta EE 10 |
+| `pom.xml` | `struts2.version` → 7.x (7.4.0 verified); replace or remove `javax.servlet:jstl` | Struts 7 is built on `jakarta.servlet`; no JSP actually uses JSTL |
+| 4 action classes | `import org.apache.struts2.ActionSupport;` | The class moved in Struts 7 |
+| 4 action classes | `@StrutsParameter` on every setter that receives a request parameter | Without it, forms and detail pages lose their input |
+| `struts.xml` | DOCTYPE stays on `struts-6.0.dtd` or `struts-6.5.dtd` (there is no 7.0 DTD); allowlist `com.pharmacy.model` and `java.util.ArrayList,java.util.List,java.util.Collection` | Without the allowlist, JSPs show blank fields and an empty dashboard list |
+
+```xml
+<!-- struts.xml -->
+<constant name="struts.allowlist.packageNames" value="com.pharmacy.model" />
+<constant name="struts.allowlist.classes" value="java.util.ArrayList,java.util.List,java.util.Collection" />
+```
+```java
+// each action class with setters
+import org.apache.struts2.interceptor.parameter.StrutsParameter;
+
+    @StrutsParameter
+    public void setPrescriptionId(String prescriptionId) { ... }
+```
+
+The allowlist and `@StrutsParameter` are Struts 7 security features — allow what the app needs; don't switch them off.
+</details>
+
+---
+
+# Troubleshooting
+
+| Symptom | What to do |
+|---|---|
+| No **Java Modernization** in the workflow list | Your Bob team lacks the Premium Package for Java, or you opened a parent folder instead of `labs/track2-java-upgrade` |
+| *"SDKMAN requires Bash 4 or higher"* / *"Failed to install SDKMan: true"* | macOS ships Bash 3.2: `brew install bash`, open a new terminal, click **Retry** |
+| `sdk install java 8.0.xxx-zulu` → *not a valid candidate version* | Use the newest `8.0.x-zulu` from `sdk list java` |
+| Only **Java 25** offered in *Java Version* | The project is already on Java 21 from an earlier run. Reset it from the repo root: `git checkout -- labs/track2-java-upgrade && git clean -fd labs/track2-java-upgrade` |
+| Agent steps finish instantly, *"Request Failed — An unexpected error occurred"*, Usage stays at `0.0000` | Bob's session is stale. **Sign out of Bob and sign back in**, then retry |
+| A sub-agent's write-up ends and nothing happens | Click **End subtask** at the bottom right |
+| *Command cancelled* | Something was typed in chat while a command awaited approval. Ask Bob to continue, then approve again |
+| Original app fails to start with an ASM / bytecode error | Maven is running a JDK newer than Java 21 (often Homebrew's). Point `JAVA_HOME` at Java 8 for the baseline run |
+| *Medicines → View* fails | Pre-existing: `medicine-view.jsp` was never written. Happens on Java 8 too |
+| `CWWKC2263E … version 60 … higher than … 31` | Liberty still has the Java EE 7 features (Exercise 3) |
+| `FileNotFoundException: …/dtds/struts-7.0.dtd` | There's no 7.0 DTD. Use `struts-6.5.dtd` in `struts.xml` |
+| Bob proposes `pkill -f "liberty:run"` | Reject it — it stops every Liberty server on the machine. Ask for `mvn liberty:stop` |
+| `SRVE0321E: The [struts2] filter did not load` and every page returns 500 | Struts 6 on a Jakarta EE 10 server: move to Struts 7 (Exercise 3) |
+| *"Parameter injection for method [setX] … rejected"* on a page | Add `@StrutsParameter` to that setter |
+| Detail pages show blank fields, or the dashboard says *No pending prescriptions* | Add the `struts.allowlist.*` constants to `struts.xml` |
+| `mvn` reports Java 1.8 after the upgrade | Open a new terminal, or `sdk use java 21.0.12-sem` (SDKMAN Semeru IDs end in `-sem`) |
+| Port 9081 already in use | `./stop-liberty.sh` in the project folder |
+
+---
+
+# Conclusion
+
+You have:
+- ✅ Run Bob's Java Modernization workflow from analysis to summary
+- ✅ Approved a diagnosed dependency fix after reading the diff
+- ✅ Turned a Java upgrade into a vulnerability remediation — 10 advisories closed, each one named
+- ✅ Read a per-task cost breakdown
+- ✅ Watched Bob take the application from *builds* to *runs* — from a one-line request
 
 Bring one surprise and one criticism to the regroup. The criticism is the more useful of the two.
 
@@ -214,43 +519,6 @@ Bring one surprise and one criticism to the regroup. The criticism is the more u
 
 # Optional extras
 
-Take these home.
-
-## A · Run the upgraded application *(~15 min)*
-
-Cut from the live lab because Liberty startup is variable and it is where rooms desynchronise. It is worth doing at your own pace.
-
-Ask Bob:
-
-```
-Provide me with the commands to run this application.
-```
-
-Then start the server and open:
-
-```
-http://localhost:9081/simple-pharmacy/dashboard
-```
-
-If startup throws errors, paste them straight into Bob's chat. That debugging loop is a genuine part of the experience and worth doing unhurried.
-
-## B · Audit the namespace migration *(~5 min)*
-
-```
-Audit all imports for remaining `javax.*` references that should be `jakarta.*`.
-```
-
-A good check on whether the recipes were exhaustive — and a good habit to form before trusting any automated migration.
-
----
-
-# Appendix · Troubleshooting
-
-| Symptom | What to do |
-|---|---|
-| No **Java Modernization** workflow in the list | Premium entitlement missing on your account, or you opened a parent folder instead of `labs/track2-java-upgrade` |
-| Baseline build is very slow | `~/.m2` is not warm on this image — tell your track lead |
-| `mvn` reports a different JDK than `java -version` | Maven uses `JAVA_HOME`, which can differ from the shell default. Normal at this stage; Bob manages it during the upgrade |
-| Build still fails after the recipes | Paste the full error into Bob's chat. Working the error loop in conversation is part of the lab |
-| Bob wants to change something you do not understand | Choose *"show me the exact edits before applying them"*, and ask it why in chat before approving |
-| Port 9081 already in use *(optional extra A)* | `./stop-liberty.sh` in the lab directory |
+- **Audit the namespace migration** — ask Bob: *"Audit all imports and configuration for remaining `javax.*` references that should be `jakarta.*`."*
+- **Fix the pre-existing bug** — ask Bob: *"Medicines → View fails. Can you find out why and fix it?"*
+- **Generate unit tests** — start the workflow again and choose *Java Unit Testing*. For a quick run, limit it to the `com.pharmacy.repository` package.
