@@ -214,7 +214,13 @@ Stop the server with **Ctrl+C**, then run `./stop-liberty.sh` to make sure port 
 ### 1. Start the workflow
 <sub>⏱ About 1 minute</sub>
 
-Open the **Bob workflows** list with the **▶** (play) button in the Bob panel's toolbar (see *Setting up*, step 3). Don't use the *Start* buttons on the *Welcome* page in the editor area — use the workflows list. Find the **Java Modernization** row and click its **Start** button on the right:
+Click the **▶** (play) button in the Bob panel's toolbar, top right — the first icon, left of the gear — to open the **Bob workflows** list:
+
+![The play button in the Bob panel toolbar opens Bob workflows](images/track2-java/01a-open-workflows-button.png)
+
+If Bob asks which workspace to use, pick **snapB-java-upgrade**. Don't use the *Start* buttons on the *Welcome* page in the editor area — use the workflows list.
+
+Find the **Java Modernization** row and click its **Start** button on the right:
 
 ![Start button on the Java Modernization row](images/track2-java/01b-start-java-modernization.png)
 
