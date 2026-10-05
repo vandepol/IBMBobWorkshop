@@ -4,18 +4,18 @@ Hands-on labs for IBM Bob, each about 60 minutes. Participants can run them on a
 
 | Lab | What it shows | Bob tier |
 |---|---|---|
-| [Track 1 — Incident workflow](workshop/LAB-TRACK1-Bob-Standard-60min-v2.md) | A custom mode and MCP servers let Bob run an incident end to end: open the ticket, diagnose with Ansible, scale out with Terraform, verify, close | Standard |
-| [Track 2 — Java 8 → 21](workshop/LAB-TRACK2-Premium-Java-60min.md) | The Java Modernization workflow upgrades a real application to Java 21 and Jakarta EE 10, then Bob helps get it running on Liberty with Struts 7 | Premium Package for Java |
-| [Track 2 — Mainframe (Z)](workshop/LAB-TRACK2-Premium-Z-60min.md) | Understanding a CICS / IMS / DB2 COBOL bank you've never seen, using Bank of Z | Premium Package for Z |
+| [Track 1 — Incident workflow](track1-incident-workflow.md) | A custom mode and MCP servers let Bob run an incident end to end: open the ticket, diagnose with Ansible, scale out with Terraform, verify, close | Standard |
+| [Track 2 — Java 8 → 21](track2-java-upgrade.md) | The Java Modernization workflow upgrades a real application to Java 21 and Jakarta EE 10, then Bob gets it running on Liberty with Struts 7 | Premium Package for Java |
+| [Track 3 — Mainframe (Z)](track3-z-bank-of-z.md) | Understanding a CICS / IMS / DB2 COBOL bank you've never seen, using Bank of Z | Premium Package for Z |
 
 ## Layout
 
+Each track is one guide at the top level. Tracks 1 and 2 also have a folder under `labs/` with the same name; that folder is what you open in Bob. Track 3 uses the public [Bank of Z](https://github.com/IBM/Bank-of-Z) repository, cloned as part of its pre-work.
+
 ```
-workshop/                      Lab guides, one per track
-labs/
-  track1-incident-workflow/    Track 1 — bank app, Terraform, Ansible, three MCP servers, Local Service Desk
-  track2-java-modernization/   Track 2 Java — application snapshots (lab 2 is the 60-minute lab)
-  track2-z-bank-of-z/          Track 2 Z — Bank of Z codebase
+track1-incident-workflow.md      labs/track1-incident-workflow/   bank app, Terraform, Ansible, MCP servers, Local Service Desk
+track2-java-upgrade.md           labs/track2-java-upgrade/        Java 8 pharmacy app (Struts, Maven)
+track3-z-bank-of-z.md            (clone IBM/Bank-of-Z)            Bank of Z: CICS / IMS / DB2 COBOL
 ```
 
 ## Setup on your own laptop
@@ -42,8 +42,8 @@ Track 1 needs no ServiceNow instance or credentials. A ServiceNow-compatible Loc
 Clone the repo to the same path on every VM (for example `~/workshop/IBMBobWorkshop`). Then do each track's laptop setup once on the image, and check before you snapshot it:
 
 - **Track 1:** Bob ⚙ → MCP shows **servicenow**, **terraform** and **ansible** as **Connected** with `labs/track1-incident-workflow` open.
-- **Track 2 Java:** Bob's ▶ workflow list shows **Java Modernization** with the `snapB-java-upgrade` folder open, `sdk version` works (the workflow requires SDKMAN), and a one-line chat prompt to Bob gets an answer and moves ⚙ → General → **Usage** above `0.0000`. A team whose model access is refused still runs the recipes and builds, but every agent step silently does nothing.
-- **Track 2 Z:** **Z Code** and **Z Architect** appear in the mode selector.
+- **Track 2 Java:** Bob's ▶ workflow list shows **Java Modernization** with `labs/track2-java-upgrade` open.
+- **Track 3 Z:** **Z Code** and **Z Architect** appear in the mode selector.
 
 ## Resetting between runs
 
@@ -55,6 +55,6 @@ The sample applications ship with demo logins (for example `demo` / `demo123` fo
 
 ## Sources
 
-- Track 1 is adapted from the `bob-incidents-workflow` lab. Changes: the Local Service Desk replaces a hosted ServiceNow instance, no credentials are in the repo, script paths are fixed, and the Docker socket is detected automatically.
-- Track 2 Java uses the Bob Java modernization lab snapshots.
-- Track 2 Z uses [IBM/Bank-of-Z](https://github.com/IBM/Bank-of-Z).
+- Track 1 is adapted from the `bob-incidents-workflow` lab. Changes: the Local Service Desk replaces a hosted ServiceNow instance; no credentials are in the repo; script paths are fixed; and the Docker socket is detected automatically.
+- Track 2 Java is the lab 2 starting snapshot from the Bob Java modernization labs.
+- Track 3 Z uses [IBM/Bank-of-Z](https://github.com/IBM/Bank-of-Z).

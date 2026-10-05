@@ -4,6 +4,7 @@ node_modules/
 
 # Terraform
 .terraform/
+.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfvars
@@ -17,8 +18,6 @@ labs/track1-incident-workflow/*/dist/
 labs/track1-incident-workflow/local-service-desk/data.json
 labs/track1-incident-workflow/local-service-desk/server.log
 labs/track1-incident-workflow/bank-app/nginx-lb.conf
-workshop/video-recording/runs/*
-!workshop/video-recording/runs/.gitkeep
 
-# Facilitator-only material (kept locally / on Box, not published)
+# Facilitator-only material (kept locally, not published)
 facilitator/
