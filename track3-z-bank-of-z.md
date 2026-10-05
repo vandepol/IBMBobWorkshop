@@ -1,52 +1,94 @@
 # IBM Bob for Z — 1-Hour Workshop
 
-**Total time:** 60 minutes  
-**Prerequisites:** Complete the Pre-Work Checklist before the session  
-**Sample workspace:** [Bank of Z](https://github.com/IBM/Bank-of-Z) — clone and open in IBM Bob before you begin
+**Total time:** about 75 minutes — the first 15 set up the environment  
+**Environment:** the IBM TechZone Red Hat Enterprise Linux 9 VM, in your browser, or your own laptop with IBM Bob  
+**Sample workspace:** [Bank of Z](https://github.com/IBM/Bank-of-Z) — you clone it in the first step  
+**Tested on:** IBM Bob 2.2.1, Red Hat Enterprise Linux 9.6 (TechZone VM), 5 October 2026
 
 ---
 
-## Pre-Work Checklist
+## 0:00–0:15 · Set up the environment
 
-Complete these steps **before** the workshop session.
+Everyone on the TechZone image starts from the same clean VM, so everyone runs these steps. Open a terminal (**Activities → Terminal**). `itzuser` has passwordless `sudo`.
 
-1. **Create an IBM ID** — https://www.ibm.com/account/reg/us-en/signup?formid=urx-19776
-2. **Download IBM Bob** — https://bob.ibm.com/download
-3. **Sign in** using your IBM ID
-4. **Install Premium Package for Z** — Settings → Add-ons → Premium Package for Z → Install
+> Working in the browser: if a click doesn't register, click again. Firefox asks for confirmation on **Ctrl+Q**; press **Enter**.
 
-   ![Install Premium Package for Z](images/track3-z/03-addons.png)
+### 1. Clone Bank of Z
+<sub>⏱ Under a minute</sub>
 
-5. **Clone the sample workspace**
+```bash
+git clone https://github.com/IBM/Bank-of-Z ~/Bank-of-Z
+```
+
+### 2. Make sure Bob is 2.2.0 or newer
+<sub>⏱ About 3 minutes if you need to upgrade</sub>
+
+The **Premium Package for Z requires IBM Bob 2.2.0 or newer.** On an older Bob it installs, then reports *"Install or upgrade to IBM Bob version 2.2.0 or newer"*, its supporting extensions fail to install, and the **Z Code** and **Z Architect** modes never appear. The TechZone image has shipped Bob 2.1.0. Check with:
+
+```bash
+rpm -q bobide
+```
+
+If it's older than 2.2.0, upgrade:
+
+1. Quit Bob if it's running (**Ctrl+Q**).
+2. Click **Update** in Bob's title bar — or open **https://bob.ibm.com/download** in Firefox — and download **Linux RPM x64**. It saves to `~/Downloads`.
+3. Install it:
 
    ```bash
-   git clone https://github.com/IBM/Bank-of-Z
+   sudo dnf install -y --nogpgcheck ~/Downloads/IBM-Bob-linux-x64-*.rpm
+   rpm -q bobide          # bobide-2.2.1 or newer
    ```
 
-   Open the `Bank-of-Z` folder in IBM Bob.
+   The RPM isn't signed (neither is the one on the image), so `dnf` needs `--nogpgcheck` for this one file — otherwise it stops with *"GPG check FAILED"*.
 
-**Verify before the session:**
+On a Mac or Windows laptop: Bob ⚙ shows the version at the bottom of its settings list; update from **bob.ibm.com/download** if it's below 2.2.0.
 
-- [ ] IBM Bob installed and signed in
-- [ ] Z Code and Z Architect modes visible
+### 3. Open Bank of Z in Bob
+<sub>⏱ About 3–5 minutes the first time</sub>
 
-  ![Z Code and Z Architect Modes](images/track3-z/04-modes.png)
+```bash
+bobide ~/Bank-of-Z
+```
 
-- [ ] Bank of Z repository open in IBM Bob
+The first time Bob starts on the VM, expect these prompts, in this order:
 
-> **Can't install locally?** Request a VM account from the IBM team — access at https://vdi.cloud.techzone.ibm.com/guacamole
+| Prompt | What to do |
+|---|---|
+| *Choose password for new keyring* | Pick a password you'll remember and click **Continue**. Bob keeps your sign-in there; don't cancel |
+| *Welcome to Bob — import your settings?* | **Skip for now** |
+| *Restricted Mode is intended for safe code browsing* | **Manage → Trust** |
+| *Bob v1.0.0 chats were created in an older version* | **Skip migration** |
+| **Log in to Bob** → *The extension wants to sign in* | **Allow**, then sign in with your IBMid in Firefox |
+| Firefox: *Allow this site to open the ibm-bob link?* | **Open Link** |
+| Bob: *Allow 'IBM Bob' extension to open this URI?* | **Open** |
 
----
+### 4. Install the Premium Package for Z
+<sub>⏱ About 2 minutes</sub>
 
-## Setup Verification
+Open **Bob ⚙ → General** and check:
+1. **Team** — if your account belongs to several teams, pick the one your instructor gave you. Not every team includes the Z package.
+2. **Add-ons** — next to **IBM Bob Premium Package for Z**, click **Install** (if asked, **Trust Publisher & Install**). Bob may also offer it in a notification: *"You are entitled to the Premium Package for Z — Install"*.
 
-At the start of the session, confirm:
+![Install Premium Package for Z](images/track3-z/03-addons.png)
 
-- [ ] IBM Bob is open with the Bank of Z folder loaded
-- [ ] **Z Code** and **Z Architect** modes are visible
-- [ ] Premium Package for Z is installed (Settings → Add-ons)
+Bob opens *Welcome to IBM Z Open Editor* and *Welcome to IBM Bob Premium Package for Z* tabs when it's done.
 
-> If you hit any issues, flag an IBM team member now.
+### 5. Setup check
+<sub>⏱ About 1 minute</sub>
+
+Click the mode selector at the bottom of the Bob chat panel. **Z Code** and **Z Architect** must be in the list.
+
+![Z Code and Z Architect Modes](images/track3-z/04-modes.png)
+
+> **Expected messages you can ignore.** There's no mainframe connection in this workshop — all analysis is local. So you'll see:
+> - *AZEEV0394E The Bob integration was skipped because the Z Open Debug profile could not connect to the host* and *EQAVS2060E Unable to log in. zOpenDebug profile bank-of-z…* — close them.
+> - A box at the top of the window asking you to *Enter the user name for the rse profile bank-of-z.rse* — **press Escape**, every time it appears (it can come back when Bob opens COBOL files). Don't enter credentials.
+> - The Problems count in the status bar climbing into the hundreds while Bob scans: copybooks it can't fetch from a host. Not your concern for this lab.
+>
+> **Starting a new task:** when you click **+** (New Task), Bob may ask which workspace to use and list the remote z/OS profiles from Bank of Z's Zowe configuration. Choose **New task in Bank-of-Z** — the local folder.
+
+> If you hit any other issue, flag an IBM team member now.
 
 ---
 
@@ -78,12 +120,13 @@ Create a data dictionary for INQACC.cbl
 ```
 
 **Option B — Workflow button:**
-1. Open `INQACC.cbl` in the editor.
-2. Click **Workflows** → **Generate data dictionary**.
+1. Click the **▶** (play) button at the top of the Bob panel to open **Bob workflows**, and choose the local **Bank-of-Z** workspace.
+2. Click **Start** on **Generate data dictionary**.
+3. In its *Prepare* step, click **Browse files** and pick up to 10 programs (for example `src/base/cics/cobol/INQACC.cbl`), then **Continue with selection**.
 
 ![Generate Data Dictionary Workflow](images/track3-z/05-datadict-workflow.png)
 
-Bob scans the program, generates short and long descriptions for each variable, and saves the result to `.bobz/DD.json`. Bob references this file automatically in all future interactions.
+The first time, Bob says no program database exists yet and offers to run `scan_program` on the COBOL folder — choose **Yes**. Bob then drafts the entries (15 for INQACC in our run, each with a short and a long description) and opens them as a diff so you can edit them; click **I'm done editing** to save. The dictionary is saved to `bobz/DD.json` in the workspace, and Bob records its location in `AGENTS.md`, so it's used in later interactions.
 
 **More prompts:**
 ```
@@ -106,7 +149,7 @@ Which programs use the variable HV-ACCOUNT-ACC-NO?
    ```
    Analyze the impact of adding a new ACCOUNT-CREDIT-LIMIT field to the ACCOUNT.cpy copybook
    ```
-3. Bob analyses across four levels — Code, Application, System, and Operation — and saves the report to `.bobz/impact-analysis/`.
+3. Bob uses the program database from Exercise 1, finds every program that includes the copybook, and follows the change through COMMAREA copybooks, the `ACCDB2.cpy` DB2 host variables and the z/OS Connect API mappings. Before rating the risk it asks clarifying questions — the new field's COBOL type, whether the DB2 `ACCOUNT` table needs an `ALTER`, and whether the COMMAREA contracts should carry it. Answer them the way your design would. The report is saved to `bobz/impact-analysis/<change-name>/IMPACT-ANALYSIS.md`.
 4. Open and review `IMPACT-ANALYSIS.md` — it includes mermaid dependency diagrams, risk ratings, and a testing plan.
 
 **More prompts:**
@@ -153,10 +196,11 @@ Explain what @INQACC.cbl does
 Explain @DBCRFUN.cbl in simple terms for a new developer
 ```
 
-**Option B — Workflow button:**
-1. Open the file in the editor.
-2. Click **Workflows** → **Explain code**.
-3. Choose a perspective: **Architect**, **Business**, or **Developer**.
+**Option B — Ask for a perspective:**
+```
+Explain @INQACC.cbl from a business perspective
+```
+Try **architect** or **developer** as well. (On Bob 2.2.1 the ▶ **Bob workflows** list has no separate "Explain code" workflow; use the chat prompt.)
 
 Bob resolves all copybooks automatically and references the data dictionary for variable context.
 
@@ -171,11 +215,11 @@ Bob resolves all copybooks automatically and references the data dictionary for 
 Generate documentation for @XFRFUN.cbl
 ```
 
-Output is saved to `docs/program-documents/[program-name].md`.
+Type `@` and pick the file from the list (choose the one under `src/base/cics/cobol`, not the expanded copy under `.bobz`). Bob may offer to add data dictionary entries first, then hand off to the **Generate program documentation** workflow: click **Start workflow**, **Browse files**, and pick the program — type the full path, for example `/home/itzuser/Bank-of-Z/src/base/cics/cobol/XFRFUN.cbl` (the file dialog doesn't expand `~`). Bob writes the sections in parallel and saves the result under `docs/program/`, mirroring the source path — for example `docs/program/src/base/cics/cobol/XFRFUN.md`.
 
 **Option B — Workflow button:**
-1. Click **Workflows** → **Generate documentation**.
-2. Choose the target program and perspective (Architect, Developer, or Business).
+1. Click **▶** → **Generate program documentation** → **Start**.
+2. **Browse files** to choose the program(s), then **Continue with selection**.
 
 **More prompts:**
 ```
@@ -198,8 +242,8 @@ Document all CICS COBOL programs in src/base/cics/cobol/
    ```
    Generate a COBOL CICS program that validates a customer credit score against the DB2 CUSTOMER table and returns eligibility status
    ```
-3. Bob generates a complete program following Bank of Z conventions — `CBL CICS(...)`, `HV-` host variable prefix, `TEST-` condition names, `COPY SORTCODE`, and SQLCODE checks after every `EXEC SQL`.
-4. Review the diff and approve the change.
+3. Bob reads an existing CICS/DB2 program (`INQCUST.cbl`) for the house conventions, writes a COMMAREA copybook and the new program, then runs the COBOL editor's diagnostics on its own output and fixes what they find. Expect SQLCODE checks after every `EXEC SQL`, the shared abend handling, 4-character abend codes and 88-level condition names.
+4. Click **Show all** to review both files, then keep them or **Undo all**. One remaining *Unused variable* warning on `ABEND-HANDLING SECTION` is a known Z Open Editor false positive that every CICS program in the repo shares.
 
 **More prompts:**
 ```
@@ -224,6 +268,8 @@ Update @XFRFUN.cbl to handle zero-amount transfer attempts with a CICS ABEND
 | Exercise 4 | COBOL code generation |
 
 **IBM Bob Documentation:** https://bob.ibm.com/docs/ide
+
+> **Bobcoins.** On the TechZone run the four exercises used roughly 30 Bobcoins: `/init` ~4, data dictionary ~2, impact analysis ~9, call chain ~3, explanation and documentation ~8, code generation ~6. The impact analysis is the heaviest — run it once per table.
 
 ---
 
