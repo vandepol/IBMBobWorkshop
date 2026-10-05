@@ -71,4 +71,4 @@ echo
 echo "Done. Next:"
 echo "  1. Open this folder in IBM Bob: $LAB_DIR"
 echo "  2. Bob ⚙ → MCP: servicenow, terraform, ansible should all show Connected (restart Bob if not)"
-echo "  3. Follow workshop/LAB-TRACK1-Bob-Standard-60min-v2.md from the smoke test"
+echo "  3. Follow track1-incident-workflow.md (repo root) from the smoke test"
