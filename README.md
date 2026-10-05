@@ -42,7 +42,7 @@ Track 1 needs no ServiceNow instance or credentials. A ServiceNow-compatible Loc
 Clone the repo to the same path on every VM (for example `~/workshop/IBMBobWorkshop`). Then do each track's laptop setup once on the image, and check before you snapshot it:
 
 - **Track 1:** Bob ⚙ → MCP shows **servicenow**, **terraform** and **ansible** as **Connected** with `labs/track1-incident-workflow` open.
-- **Track 2 Java:** Bob's ▶ workflow list shows **Java Modernization** with `labs/track2-java-upgrade` open.
+- **Track 2 Java:** Bob ⚙ → General shows the workshop **Team** with **Premium Package for Java Modernization** installed (not just an *Install* button), and Bob's ▶ workflow list shows **Java Modernization** with `labs/track2-java-upgrade` open. On RHEL, open Bob once first so the keyring password is set and the folder is trusted.
 - **Track 3 Z:** **Z Code** and **Z Architect** appear in the mode selector.
 
 ## Resetting between runs

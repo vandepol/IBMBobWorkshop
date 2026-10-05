@@ -1,7 +1,7 @@
 # IBM Bob — Java Upgrade Lab
 ## Simple Pharmacy: Java 8 → Java 21 and Jakarta EE 10, running on Liberty
 
-<sub>⏱ About 90 minutes in total · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1, 2 October 2026</sub>
+<sub>⏱ About 90 minutes in total · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1 (macOS), 2 October 2026, and IBM Bob 2.1.0 on the Red Hat 9.6 TechZone VM, 5 October 2026</sub>
 
 ---
 
@@ -65,11 +65,15 @@ By the end of this lab you will have:
 
 <sub>⏱ About 15 minutes — do this before the session. On the sandbox VM it has already been done.</sub>
 
-### 1. IBM Bob
+### 1. IBM Bob, on the right team, with the Java package installed
 - IBM Bob IDE installed and signed in
-- A Bob team that includes the **Premium Package for Java** (Bob ⚙ → *General* lists it under *Add-ons*)
+- Open **Bob ⚙ → General** and check two things:
+  1. **Team** — if your account belongs to several teams, pick the one your instructor gave you. Not every team includes the Java package; the add-ons list changes when you switch.
+  2. **Add-ons** — **IBM Bob Premium Package for Java Modernization** must be listed. If it shows an **Install** button, click it, then **Trust Publisher & Install**. Bob opens the *IBM Bob Premium Package for Java* welcome page when it's done.
 
 ### 2. A modern Bash (macOS only)
+
+> **Red Hat / TechZone VM:** skip this step. RHEL 9 ships Bash 5.1, and `zip`, `unzip`, `curl` and `git` are already installed on the TechZone image.
 
 SDKMAN's installer needs **Bash 4 or newer**; macOS ships Bash 3.2. Without this step the install stops with *"SDKMAN requires Bash 4 or higher"*, and Bob's own **Install SDKMan** button fails the same way.
 
@@ -108,6 +112,40 @@ mvn -B dependency:go-offline && mvn -B clean
 Fully quit and reopen Bob so it picks up SDKMAN, Java and Maven.
 
 > No Docker is needed. Liberty is downloaded by the Liberty Maven plugin the first time you run the app.
+
+### Red Hat Enterprise Linux (TechZone VM)
+
+Steps 3 and 4 run unchanged on RHEL 9. A few things are different on the TechZone desktop:
+
+**Opening Bob.** Bob is installed as the `bobide` package. Start it on the lab folder from a terminal, so it picks up SDKMAN's Java and Maven:
+
+```bash
+bobide ~/IBMBobWorkshop/labs/track2-java-upgrade
+```
+
+**First launch — expect these prompts, in this order:**
+
+| Prompt | What to do |
+|---|---|
+| *Choose password for new keyring* | Pick a password you'll remember and click **Continue**. Bob keeps your sign-in in the keyring; don't cancel it |
+| *Welcome to Bob — import your settings?* | **Skip for now** |
+| *Restricted Mode is intended for safe code browsing* | Click **Manage → Trust**. Bob can't run commands in an untrusted folder |
+| *Bob v1.0.0 chats were created in an older version* | **Skip migration** |
+| *A git repository was found in the parent folders* | **Never** |
+| *A new update is available* | Leave it — stay on the version the lab was set up with |
+| **Log in to Bob** → *The extension wants to sign in* | **Allow**, sign in with your IBMid in Firefox |
+| Firefox: *Allow this site to open the ibm-bob link?* | **Open Link** |
+| Bob: *Allow 'IBM Bob' extension to open this URI?* | **Open** |
+| *You are entitled to the Premium Package for Z* | **Cancel** — this lab doesn't need it |
+
+Then do step 1 above (Team and Add-ons).
+
+**Bob 2.1.0.** The TechZone image ships Bob 2.1.0; the screenshots in this guide are from 2.2.1, and the workflow steps are the same. The ▶ button in the Bob panel only appears **after** the Java package is installed. You can also start the workflow from the *IBM Bob Premium Package for Java* welcome page that opens after the install: **Java Upgrade → Start**.
+
+**Working through the browser (Guacamole).**
+- If a click doesn't register, click again — the first click sometimes only moves focus.
+- **Ctrl+C may not reach the VM.** Stop the server from a second terminal tab (**Ctrl+Shift+T**) with `./stop-liberty.sh` instead.
+- Firefox asks for confirmation on **Ctrl+Q**; press **Enter** to quit.
 
 ---
 
@@ -175,7 +213,9 @@ If Bob asks which workspace to use, pick **track2-java-upgrade**. **Java Moderni
 
 ![Bob workflows list with Java Modernization](images/track2-java/01-workflow-list.png)
 
-> 🚩 **No Java Modernization?** Your Bob team doesn't include the Premium Package for Java.
+> 🚩 **No Java Modernization?** Check **Bob ⚙ → General**: the right **Team** selected, and the **Premium Package for Java Modernization** installed (Prerequisites, step 1).
+>
+> **No ▶ button at all?** It only appears once the Java package is installed (Prerequisites, step 1).
 
 ### 4. See the original application running on Java 8
 <sub>⏱ About 5 minutes (the first run downloads Liberty)</sub>
@@ -294,7 +334,7 @@ Bob then rebuilds under Java 21 (approve it): *0 errors, 1 warning*.
 Bob starts a **Fix build issues** sub-agent for the warning. Watch how it works:
 1. Reads `pom.xml` and explains the cause — `javassist 3.20.0-GA`, pulled in through `struts2-core → ognl`, has POM problems on Java 21
 2. Runs `mvn dependency:tree` to confirm before changing anything
-3. Proposes a `<dependencyManagement>` block pinning javassist to `3.29.2-GA`, and asks
+3. Proposes a `<dependencyManagement>` block pinning javassist to a current 3.x release (`3.29.2-GA` or `3.30.2-GA` in our runs), and asks
 
 ![Javassist root cause and Yes/No approval](images/track2-java/07-javassist-approval.png)
 
@@ -406,7 +446,16 @@ Bob doesn't know the answer up front, and neither do you need to. Watch how it g
 
 Your run may take a different path — that's the point. Notice the loop: read the evidence, form a theory, test it, adjust.
 
-> 🚩 **Watch what you approve.** In the verification run Bob proposed `pkill -f "liberty:run"` to stop its server — that stops *every* Liberty server on the machine. Reject a command like that; Bob switches to `mvn liberty:stop`, which only stops this project's server.
+> 🚩 **Watch what you approve.** In the verification run Bob proposed `pkill -f "liberty:run"` to stop its server — that stops *every* Liberty server on the machine. Reject a command like that; Bob switches to `mvn liberty:stop`, which only stops this project's server. (It happened again on the TechZone run, as `pkill -f "server run defaultServer"`.)
+
+**Keeping Bob moving** — things seen on the TechZone VM (Bob 2.1.0):
+
+| You see | Do this |
+|---|---|
+| Bob offers the Java Modernization workflows | **No thanks** — you want a chat answer, not another workflow (only happens in *Agent* mode) |
+| The deploy fails with missing Liberty features | Let Bob read the log; it installs them with `featureUtility installServerFeatures` |
+| Bob started `liberty:run` in the background and sits on *Waiting on the process…* | Type: `Liberty is running in the background now. Please continue from the log output.` |
+| *Task limit reached — maximum of 100 turns* | Click **Continue Task** |
 
 ### 3. Check it against the original
 <sub>⏱ About 5 minutes</sub>
@@ -425,6 +474,22 @@ Opening a prescription shows a "Parameter injection … rejected" message. Can y
 ```
 
 This is the last layer of Struts 7: new security rules that are invisible to the compiler and only show up as missing data at runtime.
+
+**If Bob circles.** This layer is the hardest part of the lab. Bob usually fixes the *Parameter injection* message quickly (`@StrutsParameter`), but the empty dashboard can send it after other theories — class reloading, singletons, the convention plugin. If it hasn't converged after ten minutes or so, give it evidence, one hint at a time, still not the fix:
+
+```
+The action has the data (Total Prescriptions shows 3), but the JSP renders the list as empty.
+Could Struts 7's OGNL security rules be stopping the JSP from reading the list or the model objects?
+```
+
+and, if the list is still empty after that:
+
+```
+The prescription list page works, so the repository is fine. The dashboard JSP calls methods on the list itself
+(like isEmpty and size). Is java.util.ArrayList allowed by the OGNL allowlist? A blocked call on the list would look exactly like an empty list.
+```
+
+On the TechZone run (Bob 2.1.0) both hints were needed; Bob then found the allowlist settings by reading Struts' own `SecurityMemberAccess` class. Exercise 3 used about 20 Bobcoins there — budget for it.
 
 ### 4. Why the build passed but the app didn't run
 <sub>⏱ About 5 minutes</sub>
@@ -457,7 +522,7 @@ Use this to coach a stuck table, not as the prompt. Bob may choose different but
 | File | Change | Why |
 |---|---|---|
 | `server.xml` | `servlet-3.1` → `servlet-6.0`, `jsp-2.3` → `pages-3.1` | Liberty must provide Jakarta EE 10 |
-| `pom.xml` | `struts2.version` → 7.x (7.4.0 verified); replace or remove `javax.servlet:jstl` | Struts 7 is built on `jakarta.servlet`; no JSP actually uses JSTL |
+| `pom.xml` | `struts2.version` → 7.x (7.4.0 and 7.1.1 verified); replace or remove `javax.servlet:jstl` | Struts 7 is built on `jakarta.servlet`; no JSP actually uses JSTL |
 | 4 action classes | `import org.apache.struts2.ActionSupport;` | The class moved in Struts 7 |
 | 4 action classes | `@StrutsParameter` on every setter that receives a request parameter | Without it, forms and detail pages lose their input |
 | `struts.xml` | DOCTYPE stays on `struts-6.0.dtd` or `struts-6.5.dtd` (there is no 7.0 DTD); allowlist `com.pharmacy.model` and `java.util.ArrayList,java.util.List,java.util.Collection` | Without the allowlist, JSPs show blank fields and an empty dashboard list |
@@ -475,6 +540,10 @@ import org.apache.struts2.interceptor.parameter.StrutsParameter;
     public void setPrescriptionId(String prescriptionId) { ... }
 ```
 
+Bob may write the allowlist as `struts.allowlist.packageNames=com.pharmacy,java.util` instead. That works, but allows all of `java.util`; the two narrower lines above are the better habit.
+
+On a fresh Liberty (TechZone VM) the Jakarta features may also need installing: `target/liberty/wlp/bin/featureUtility installServerFeatures defaultServer`.
+
 The allowlist and `@StrutsParameter` are Struts 7 security features — allow what the app needs; don't switch them off.
 </details>
 
@@ -484,7 +553,11 @@ The allowlist and `@StrutsParameter` are Struts 7 security features — allow wh
 
 | Symptom | What to do |
 |---|---|
-| No **Java Modernization** in the workflow list | Your Bob team lacks the Premium Package for Java, or you opened a parent folder instead of `labs/track2-java-upgrade` |
+| No **Java Modernization** in the workflow list | Bob ⚙ → General: pick the right **Team**, and **Install** the Premium Package for Java Modernization under Add-ons. Also check you opened `labs/track2-java-upgrade`, not a parent folder |
+| No ▶ button in the Bob panel | The Premium Package for Java Modernization isn't installed: Bob ⚙ → General → Add-ons → **Install** |
+| Bob's agents don't run any commands | The folder is in **Restricted Mode**: click **Manage → Trust** in the banner |
+| RHEL: *Choose password for new keyring* on Bob's first start | Set a password and **Continue**; Bob stores its sign-in there |
+| RHEL: Ctrl+C doesn't stop `mvn liberty:run` in the browser desktop | Open a second terminal tab (**Ctrl+Shift+T**) and run `./stop-liberty.sh` |
 | *"SDKMAN requires Bash 4 or higher"* / *"Failed to install SDKMan: true"* | macOS ships Bash 3.2: `brew install bash`, open a new terminal, click **Retry** |
 | `sdk install java 8.0.xxx-zulu` → *not a valid candidate version* | Use the newest `8.0.x-zulu` from `sdk list java` |
 | Only **Java 25** offered in *Java Version* | The project is already on Java 21 from an earlier run. Reset it from the repo root: `git checkout -- labs/track2-java-upgrade && git clean -fd labs/track2-java-upgrade` |
@@ -501,6 +574,9 @@ The allowlist and `@StrutsParameter` are Struts 7 security features — allow wh
 | Detail pages show blank fields, or the dashboard says *No pending prescriptions* | Add the `struts.allowlist.*` constants to `struts.xml` |
 | `mvn` reports Java 1.8 after the upgrade | Open a new terminal, or `sdk use java 21.0.12-sem` (SDKMAN Semeru IDs end in `-sem`) |
 | Port 9081 already in use | `./stop-liberty.sh` in the project folder |
+| *Task limit reached — maximum of 100 turns* | Click **Continue Task** |
+| Bob waits forever on a background `liberty:run` | Tell it Liberty is running and to continue from the log output |
+| Deploy fails: Jakarta features not installed (fresh Liberty) | `target/liberty/wlp/bin/featureUtility installServerFeatures defaultServer` — Bob usually does this itself |
 
 ---
 
