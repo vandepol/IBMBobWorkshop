@@ -373,7 +373,7 @@ Error: Unable to access jarfile /Applications/IBM Bob.app/Contents/Resources/app
 
 **Symptom:** After Liberty deploys, the log shows a Struts2 filter loading error.
 
-**Solution:** Safe to ignore. The migrated app functions correctly; this message reflects a class-loading side effect that does not affect runtime behavior.
+**Solution:** If the pages load, it is safe to ignore here. If every page returns 500, the filter really failed — typically a `javax`-based Struts (2.5/6.x) running on Jakarta EE features. Check that `server.xml` features and the Struts version belong to the same generation.
 
 ---
 

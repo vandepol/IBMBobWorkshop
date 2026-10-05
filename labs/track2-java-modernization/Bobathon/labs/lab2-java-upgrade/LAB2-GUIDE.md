@@ -39,7 +39,7 @@ Upgrading a Java application from an older LTS version (like Java 8) to a modern
 You'll use **Bob V2's Java Modernization workflow** with the **Java Upgrade** sub-type to move the pharmacy app from Java 8 to Java 21 and Jakarta EE 10.
 
 - **Before**: Liberty Runtime, Java 8, Struts 2.5.x
-- **After**: Liberty Runtime, Java 21, Struts 2.5.x, Jakarta EE 10
+- **After**: Liberty Runtime, Java 21, Jakarta EE 10, Struts 7.x — the workflow gets the build green on Java 21; moving Struts to 7.x and Liberty to the Jakarta EE 10 features is what makes it run (see `workshop/LAB-TRACK2-Premium-Java-60min.md`, Exercise 3)
 
 ## Learning Objectives
 

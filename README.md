@@ -5,7 +5,7 @@ Hands-on labs for IBM Bob, each about 60 minutes. Participants can run them on a
 | Lab | What it shows | Bob tier |
 |---|---|---|
 | [Track 1 — Incident workflow](workshop/LAB-TRACK1-Bob-Standard-60min-v2.md) | A custom mode and MCP servers let Bob run an incident end to end: open the ticket, diagnose with Ansible, scale out with Terraform, verify, close | Standard |
-| [Track 2 — Java 8 → 21](workshop/LAB-TRACK2-Premium-Java-60min.md) | The Java Modernization workflow upgrades a real application and gets it to a green build | Premium Package for Java |
+| [Track 2 — Java 8 → 21](workshop/LAB-TRACK2-Premium-Java-60min.md) | The Java Modernization workflow upgrades a real application to Java 21 and Jakarta EE 10, then Bob helps get it running on Liberty with Struts 7 | Premium Package for Java |
 | [Track 2 — Mainframe (Z)](workshop/LAB-TRACK2-Premium-Z-60min.md) | Understanding a CICS / IMS / DB2 COBOL bank you've never seen, using Bank of Z | Premium Package for Z |
 
 ## Layout
