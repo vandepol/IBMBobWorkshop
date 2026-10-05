@@ -4,7 +4,7 @@
 **Time:** 60 minutes
 **Environment:** pre-baked sandbox VM — nothing to install. Or your own laptop — see *Running on your own laptop* below.
 **Bob tier:** standard (no premium entitlement needed)
-**Tested on:** IBM Bob 2.2.1, macOS with Podman
+**Tested on:** IBM Bob 2.2.1, macOS with Podman · IBM Bob 2.1.0, Red Hat Enterprise Linux 9.6 (TechZone VM) with rootless Podman, 5 October 2026
 
 ---
 
@@ -37,6 +37,32 @@ cd IBMBobWorkshop/labs/track1-incident-workflow
 ```
 
 Then open `IBMBobWorkshop/labs/track1-incident-workflow` in Bob. Every command in this lab runs from that folder. If you move the folder, run `./setup-local.sh` again.
+
+### Red Hat Enterprise Linux (TechZone VM)
+
+A fresh RHEL 9 VM has Podman but none of the other tools. Install them (about 2 minutes; `itzuser` has passwordless sudo on TechZone):
+
+```bash
+sudo dnf module install -y nodejs:20/common
+sudo dnf install -y ansible-core podman-docker
+sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+sudo dnf install -y terraform
+sudo touch /etc/containers/nodocker          # silences "Emulate Docker CLI using podman"
+```
+
+Rootless Podman can't bind port 80, which the app's frontend uses. Allow it once:
+
+```bash
+echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/90-track1.conf && sudo sysctl --system
+```
+
+Then clone and run `./setup-local.sh` as above. On Linux with Podman it also:
+- turns on your user's Podman socket and points Terraform at it (`/var/run/docker.sock` from `podman-docker` is root's socket, which `itzuser` can't use), and adds `DOCKER_HOST` to `~/.bashrc` so commands Bob runs use it too — **open a new terminal afterwards**;
+- tells Podman to look up short image names such as `nginx:alpine` on Docker Hub. Without this, pulls fail with *"short-name resolution enforced but cannot prompt without a TTY"*.
+
+Open Bob on the folder with `bobide ~/IBMBobWorkshop/labs/track1-incident-workflow`. The first time, Bob opens it in **Restricted Mode**: click **Manage → Trust**. **The MCP servers don't start until the folder is trusted.** For Bob's other first-run prompts (keyring password, sign-in links), see *Red Hat Enterprise Linux (TechZone VM)* in the Track 2 guide.
+
+> On Podman, `docker ps` shows the app's containers as **(unhealthy)** even when they work. Inside a Podman container `localhost` resolves to IPv6 first and the services listen on IPv4. The repo's health checks now use `127.0.0.1`; if you see *unhealthy* anyway, it's cosmetic — check the app itself.
 
 ---
 
@@ -114,6 +140,8 @@ This is the part people skip and it is the most important ten minutes in the lab
 2. Click the **⚙ gear** in the header of the **Modes** list
 3. In the Modes settings page that opens, click **🎫 SDLC Incident Manager**
 
+(Or: Bob **⚙ → Modes → 🎫 SDLC Incident Manager**.)
+
 Read the mode definition. Then open the instruction files on disk (**⌘P** and type the file name):
 
 ```
@@ -170,11 +198,15 @@ What Bob did in the tested run, in order (about 17 approvals, ~10 minutes of Bob
 
 ### Three things worth noticing while it runs
 
-1. **It ran `plan` before `apply`.** Nobody told it to in the prompt. That is in the mode.
+1. **Did it run `plan` before `apply`?** In the macOS run it did, unprompted. In the TechZone run it went straight to `terraform apply` with `auto_approve` — so **read the request**: if there's no plan first, click **Reject** and say so in chat (see *If you reject something* below). That run's plan then caught a bug in Bob's own `main.tf` before anything changed.
 2. **It verified before closing.** It did not declare victory on the basis of having made a change — it went back and measured.
 3. **The ticket is being written as it goes,** not reconstructed afterwards. Open **http://localhost:8099** in a second tab and watch the incident's activity timeline fill in live.
 
 > ℹ️ **How you know Bob is finished:** the chat shows a summary (files changed, before/after metrics) and the input box reads *"Follow up or start new task"*. There is no separate "task completed" banner.
+
+> ✋ **If you reject something, say why in chat.** A bare **Reject** looks to Bob like a failed tool, and it may try the same action another way. In the TechZone run, a rejected `terraform apply` came back first through the Ansible ad-hoc shell module, then as a plain shell command. Reject it again and type what you want, for example: *"Nothing is blocked — I rejected those on purpose. Run terraform plan first and show me what will change, then wait for my OK."* Bob then planned, waited, and applied after you said so. It's a good moment for the debrief: the approval gate only works if you read what's behind each request.
+>
+> **Typing in chat on a small screen:** if Bob's "A new update is available" notification covers the chat box, maximize the Bob panel (the ⤢ icon at its top right) so the box moves clear of it.
 
 > 🩹 **If Bob stalls or takes a wrong turn:** say so in chat, plainly — *"the health check hasn't returned, what's the current state?"* Recovering a stuck agent in conversation is a legitimate part of the demo, not a failure of it. If it is properly wedged, start a new task (**+**) and re-paste the incident report; the infrastructure state persists.
 
@@ -289,3 +321,9 @@ Clears metrics and delays, destroys the Terraform infrastructure, removes contai
 | `http://localhost` will not load after deploy | `docker ps` to confirm containers are up; give it 30 seconds and retry |
 | Bob appears frozen mid-task | Check whether it asked you a question at the bottom of the chat. Otherwise ask in chat what the current state is. Long Terraform applies genuinely take time |
 | Bob proposed something that looks wrong | Click **Reject** and ask why it proposed it. This is a good moment, not a bad one — bring it to the debrief |
+| After a **Reject**, Bob tries the same thing through another tool (Ansible shell, plain shell) | Reject again and say in chat what you want instead. Bob reads a bare reject as a failure |
+| RHEL: `could not pull postgres:16-alpine` / *short-name resolution enforced* | Re-run `./setup-local.sh` (it configures Docker Hub for short names), or use `docker.io/library/...` |
+| RHEL: deploy fails with permission denied on `/var/run/docker.sock` | `systemctl --user enable --now podman.socket` and `export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock` — `setup-local.sh` does this |
+| RHEL: `http://localhost` doesn't load, frontend failed to bind port 80 | `echo 'net.ipv4.ip_unprivileged_port_start=80' \| sudo tee /etc/sysctl.d/90-track1.conf && sudo sysctl --system`, then redeploy |
+| RHEL: MCP servers missing or not starting in Bob | The folder is in Restricted Mode — **Manage → Trust** |
+| Containers show **(unhealthy)** on Podman but the app works | `localhost` resolves to IPv6 inside Podman containers; cosmetic. Health checks in the repo use `127.0.0.1` |
