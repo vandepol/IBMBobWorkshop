@@ -165,7 +165,11 @@ You may see a few first-run pop-ups — *Install GitHub Copilot modernization ex
 
 ### 3. Confirm the workflow is available
 
-Click **▶** at the top of the Bob panel. If Bob asks which workspace to use, pick **snapB-java-upgrade**. **Java Modernization** should be in the list.
+Click the **▶** (play) button in the Bob panel's toolbar, top right — the first icon, left of the gear:
+
+![The play button in the Bob panel toolbar opens Bob workflows](images/track2-java/01a-open-workflows-button.png)
+
+If Bob asks which workspace to use, pick **snapB-java-upgrade**. **Java Modernization** should be in the list.
 
 ![Bob workflows list with Java Modernization](images/track2-java/01-workflow-list.png)
 
@@ -210,7 +214,7 @@ Stop the server with **Ctrl+C**, then run `./stop-liberty.sh` to make sure port 
 ### 1. Start the workflow
 <sub>⏱ About 1 minute</sub>
 
-In the **Bob workflows** list (opened with **▶** at the top of the Bob panel), find the **Java Modernization** row and click its **Start** button on the right:
+Open the **Bob workflows** list with the **▶** (play) button in the Bob panel's toolbar (see *Setting up*, step 3). Don't use the *Start* buttons on the *Welcome* page in the editor area — use the workflows list. Find the **Java Modernization** row and click its **Start** button on the right:
 
 ![Start button on the Java Modernization row](images/track2-java/01b-start-java-modernization.png)
 
