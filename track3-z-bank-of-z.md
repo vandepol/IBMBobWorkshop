@@ -15,7 +15,7 @@ Complete these steps **before** the workshop session.
 3. **Sign in** using your IBM ID
 4. **Install Premium Package for Z** — Settings → Add-ons → Premium Package for Z → Install
 
-   ![Install Premium Package for Z](images/03-addons.png)
+   ![Install Premium Package for Z](images/track3-z/03-addons.png)
 
 5. **Clone the sample workspace**
 
@@ -30,7 +30,7 @@ Complete these steps **before** the workshop session.
 - [ ] IBM Bob installed and signed in
 - [ ] Z Code and Z Architect modes visible
 
-  ![Z Code and Z Architect Modes](images/04-modes.png)
+  ![Z Code and Z Architect Modes](images/track3-z/04-modes.png)
 
 - [ ] Bank of Z repository open in IBM Bob
 
@@ -81,7 +81,7 @@ Create a data dictionary for INQACC.cbl
 1. Open `INQACC.cbl` in the editor.
 2. Click **Workflows** → **Generate data dictionary**.
 
-![Generate Data Dictionary Workflow](images/05-datadict-workflow.png)
+![Generate Data Dictionary Workflow](images/track3-z/05-datadict-workflow.png)
 
 Bob scans the program, generates short and long descriptions for each variable, and saves the result to `.bobz/DD.json`. Bob references this file automatically in all future interactions.
 
