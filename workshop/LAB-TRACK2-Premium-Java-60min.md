@@ -210,7 +210,11 @@ Stop the server with **Ctrl+C**, then run `./stop-liberty.sh` to make sure port 
 ### 1. Start the workflow
 <sub>⏱ About 1 minute</sub>
 
-Click **▶ Start** next to **Java Modernization**. The workflow opens on a short *Getting Started* card — worth ten seconds.
+In the **Bob workflows** list (opened with **▶** at the top of the Bob panel), find the **Java Modernization** row and click its **Start** button on the right:
+
+![Start button on the Java Modernization row](images/track2-java/01b-start-java-modernization.png)
+
+The workflow opens on a short *Getting Started* card — worth ten seconds.
 
 ### 2. Analyze the project
 <sub>⏱ About 3 minutes</sub>
