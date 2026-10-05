@@ -1,6 +1,6 @@
 # IBM Bob Workshop
 
-Hands-on labs for IBM Bob, each about 60 minutes. Participants can run them on a prepared sandbox VM or on their own laptop.
+Hands-on labs for IBM Bob, each about 60–90 minutes including setup. Participants run them on the IBM TechZone Red Hat VM (in the browser) or on their own laptop. Each guide starts with the setup steps, so a fresh VM is all anyone needs.
 
 | Lab | What it shows | Bob tier |
 |---|---|---|
@@ -18,32 +18,25 @@ track2-java-upgrade.md           labs/track2-java-upgrade/        Java 8 pharmac
 track3-z-bank-of-z.md            (clone IBM/Bank-of-Z)            Bank of Z: CICS / IMS / DB2 COBOL
 ```
 
-## Setup on your own laptop
+## Setup
 
-Clone once:
+Every participant runs their track's setup at the start of the lab — it's the first section of each guide, about 15 minutes, and covers both the TechZone VM and a Mac laptop:
 
-```bash
-git clone https://github.com/vandepol/IBMBobWorkshop
-```
+- **Track 1:** install Node, Ansible, Terraform and the Podman Docker shim with `dnf`, allow port 80 for rootless Podman, clone this repo and run `labs/track1-incident-workflow/setup-local.sh`. The script builds the MCP servers, writes this folder's absolute paths into `.bob/mcp.json` (Bob needs absolute paths), points `DOCKER_HOST` at Podman or Colima, runs `terraform init` and pre-pulls the images. Run it again if you move the folder.
+- **Track 2 Java:** install SDKMAN, Java 8 and Maven, clone this repo and warm Maven's cache, open the lab folder in Bob, then pick the right team and install the Premium Package for Java.
+- **Track 3 Z:** clone [Bank of Z](https://github.com/IBM/Bank-of-Z), upgrade Bob to 2.2.0 or newer if needed (the Premium Package for Z requires it), and install the Premium Package for Z.
 
-Then follow the **Running on your own laptop** section at the top of your track's guide. For Track 1 it comes down to:
-
-```bash
-cd IBMBobWorkshop/labs/track1-incident-workflow
-./setup-local.sh
-```
-
-`setup-local.sh` checks for Docker (Desktop, Colima or Podman), Terraform, Ansible and Node 20+. It then builds the MCP servers, writes this folder's absolute paths into `.bob/mcp.json` (Bob needs absolute paths), sets `DOCKER_HOST` for Colima or Podman, runs `terraform init` and pre-pulls the images. Run it again if you move the folder.
+On the TechZone VM, Bob's first launch also asks for a keyring password, to trust the folder, and to sign in; each guide lists those prompts.
 
 Track 1 needs no ServiceNow instance or credentials. A ServiceNow-compatible Local Service Desk runs on `http://localhost:8099`, and pointing the lab at a real instance is a config change described in the guide.
 
-## Setup on a sandbox VM
+### Instructors: checking a VM
 
-Clone the repo to the same path on every VM (for example `~/workshop/IBMBobWorkshop`). Then do each track's laptop setup once on the image, and check before you snapshot it:
+Run a track's setup on one VM before the session and check:
 
 - **Track 1:** Bob ⚙ → MCP shows **servicenow**, **terraform** and **ansible** as **Connected** with `labs/track1-incident-workflow` open.
-- **Track 2 Java:** Bob ⚙ → General shows the workshop **Team** with **Premium Package for Java Modernization** installed (not just an *Install* button), and Bob's ▶ workflow list shows **Java Modernization** with `labs/track2-java-upgrade` open. On RHEL, open Bob once first so the keyring password is set and the folder is trusted.
-- **Track 3 Z:** **Z Code** and **Z Architect** appear in the mode selector.
+- **Track 2 Java:** Bob ⚙ → General shows the workshop **Team** with **Premium Package for Java Modernization** installed, and Bob's ▶ workflow list shows **Java Modernization** with `labs/track2-java-upgrade` open.
+- **Track 3 Z:** Bob ⚙ shows version 2.2.0 or newer, and **Z Code** and **Z Architect** appear in the mode selector.
 
 ## Resetting between runs
 
