@@ -1,7 +1,7 @@
 # IBM Bob — Java Upgrade Lab
 ## Simple Pharmacy: Java 8 → Java 21 and Jakarta EE 10, running on Liberty
 
-<sub>⏱ About 80 minutes in total · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1, 2 October 2026</sub>
+<sub>⏱ About 90 minutes in total · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1, 2 October 2026</sub>
 
 ---
 
@@ -56,7 +56,8 @@ By the end of this lab you will have:
 - Approved dependency fixes after reading Bob's root-cause analysis and the exact diff
 - Seen a version upgrade turn into a vulnerability remediation, with advisory IDs
 - Read Bob's per-task cost breakdown
-- Taken the result from *builds* to *runs*, and understood why those are two different milestones
+- Seen the original application running on Java 8, and the upgraded one running on Java 21
+- Watched Bob diagnose a failing deployment from a one-line request, and understood why *builds* and *runs* are two different milestones
 
 ---
 
@@ -169,6 +170,38 @@ Click **▶** at the top of the Bob panel. If Bob asks which workspace to use, p
 ![Bob workflows list with Java Modernization](images/track2-java/01-workflow-list.png)
 
 > 🚩 **No Java Modernization?** Your Bob team doesn't include the Premium Package for Java.
+
+### 4. See the original application running on Java 8
+<sub>⏱ About 5 minutes (the first run downloads Liberty)</sub>
+
+Before changing anything, see what you're modernizing. In a terminal, from the `snapB-java-upgrade` folder:
+
+```bash
+java -version     # 1.8.0_xxx
+mvn -version      # its "Java version" line must also say 1.8
+mvn liberty:run
+```
+
+Wait for `CWWKZ0001I: Application simple-pharmacy.war started`, then open:
+
+| Page | URL |
+|---|---|
+| Dashboard | http://localhost:9081/simple-pharmacy.war/dashboard |
+| Prescriptions | http://localhost:9081/simple-pharmacy.war/prescription-list |
+| Orders | http://localhost:9081/simple-pharmacy.war/order-list |
+| Medicines | http://localhost:9081/simple-pharmacy.war/medicine-list |
+
+![The original pharmacy dashboard on Java 8](images/track2-java/00-java8-dashboard.png)
+
+![The original prescription list on Java 8](images/track2-java/00-java8-prescriptions.png)
+
+Note what you see — **3 prescriptions, RX001 pending**, and its *View* and *Validate* buttons. You'll compare against this in Exercise 3.
+
+Stop the server with **Ctrl+C**, then run `./stop-liberty.sh` to make sure port 9081 is free.
+
+> ⚠️ **Run this step on Java 8.** If `mvn -version` reports a much newer Java (Homebrew's Maven brings its own JDK, Java 24 or later), Struts 2.5's bytecode scanner fails at startup with an ASM error. Point Maven at Java 8 with `export JAVA_HOME="$(sdk home java "$JAVA8")"`, or use SDKMAN's Maven.
+>
+> ℹ️ *Medicines → View* fails in the original application too: `struts.xml` points at a `medicine-view.jsp` that was never written. It's a pre-existing bug, not something the upgrade causes.
 
 ---
 
@@ -316,127 +349,118 @@ Discuss before moving on:
 
 # Exercise 3: Run the upgraded application
 
-The build is green. The real test is whether the application runs.
+The build is green. The real test is whether the application runs — and this is where you hand Bob a goal rather than instructions.
 
-### 1. Start Liberty
-<sub>⏱ About 5 minutes (the first run downloads Liberty)</sub>
+### 1. Ask Bob to run it
+<sub>⏱ About 2 minutes</sub>
 
-Make sure Maven is on Java 21 (`mvn -version`; open a new terminal if it still says 1.8), then from the project folder:
-
-```bash
-mvn liberty:run
-```
-
-Liberty starts, but the application doesn't:
+In Bob's chat (with no workflow running), ask what any developer would ask:
 
 ```
-CWWKZ0002E: An exception occurred while starting the application simple-pharmacy.war ...
-CWWKC2263E: The webapp : WEB-INF/web.xml deployment descriptor on line 5 specifies version 60,
-which is higher than the current provisioned version 31.
+The Java 21 upgrade builds successfully. Can you start the application on Liberty and make sure the pages work?
 ```
 
-Press **Ctrl+C** to stop the server (or run `./stop-liberty.sh`).
+That's all. No error message, no hints about server features or framework versions. Approve Bob's commands as they come up (*Approve for task* keeps it moving).
 
-### 2. Why the build passed but the app doesn't start
+### 2. Watch Bob work out what's wrong
+<sub>⏱ About 15 minutes</sub>
+
+Bob doesn't know the answer up front, and neither do you need to. Watch how it gets there. In the verification run it went like this:
+
+1. **Reads the project first.** It notices `server.xml` still asks Liberty for `servlet-3.1` and `jsp-2.3` while the code now targets Jakarta EE 10, and updates the features to `servlet-6.0` and `pages-3.1`.
+
+   ![Bob spots the server feature mismatch](images/track2-java/14-ex3-prompt-diagnosis.png)
+
+2. **Starts the server and reads the log.** The Struts filter fails to load (`SRVE0321E`). Bob's first theory is the old `javax` JSTL jar; it swaps in the Jakarta one and restarts. The error remains.
+3. **Goes deeper instead of guessing again.** It pulls the full stack trace from Liberty's own log and finds the real cause: `ClassNotFoundException: javax.servlet.Filter`.
+
+   ![Bob finds the root cause in the stack trace](images/track2-java/15-ex3-root-cause.png)
+
+4. **Checks the evidence.** It opens the Struts 6.8 jar, confirms the filter is still built on `javax.servlet`, checks Maven Central, and concludes Jakarta support starts with **Struts 7**.
+
+   ![Bob confirms Struts 7 is required](images/track2-java/16-ex3-struts7.png)
+
+5. **Follows the fallout.** Moving to Struts 7 breaks the build; Bob looks inside the new jar, finds `ActionSupport` moved to `org.apache.struts2`, and fixes all four action classes.
+
+   ![Bob fixes the ActionSupport package move](images/track2-java/17-ex3-actionsupport.png)
+
+6. **Corrects its own mistake.** It had pointed `struts.xml` at a `struts-7.0.dtd` that doesn't exist; it reads the error, checks which DTDs the jar actually ships, and switches to `struts-6.5.dtd`.
+
+   ![Bob corrects the DTD reference](images/track2-java/18-ex3-dtd-fix.png)
+
+Your run may take a different path — that's the point. Notice the loop: read the evidence, form a theory, test it, adjust.
+
+> 🚩 **Watch what you approve.** In the verification run Bob proposed `pkill -f "liberty:run"` to stop its server — that stops *every* Liberty server on the machine. Reject a command like that; Bob switches to `mvn liberty:stop`, which only stops this project's server.
+
+### 3. Check it against the original
+<sub>⏱ About 5 minutes</sub>
+
+Open the dashboard: http://localhost:9081/simple-pharmacy.war/dashboard
+
+The pages load — but compare with what you saw on Java 8. Look closely:
+- Does the dashboard list **RX001** as pending, or say *No pending prescriptions*?
+- Does **View** on a prescription show the patient, doctor and medicine?
+
+If something's missing, describe the symptom to Bob — the way you'd raise a bug, not a fix:
+
+```
+The pages load, but the dashboard says "No pending prescriptions" — on Java 8 it listed RX001.
+Opening a prescription shows a "Parameter injection … rejected" message. Can you find out why and fix it?
+```
+
+This is the last layer of Struts 7: new security rules that are invisible to the compiler and only show up as missing data at runtime.
+
+### 4. Why the build passed but the app didn't run
 <sub>⏱ About 5 minutes</sub>
 
 The Java Upgrade workflow's job ends at a successful build: it rewrites the code, resolves dependencies and vulnerabilities, and proves the result with Maven. Two things sit outside a build, and they only show up when the application is deployed:
 
-1. **Server configuration.** `src/main/liberty/config/server.xml` still asks Liberty for the Java EE 7 features (`servlet-3.1`, `jsp-2.3`). The upgraded `web.xml` declares Jakarta EE 10, so Liberty refuses it.
-2. **Framework generation.** Struts **6.x** is the newest line that keeps the old programming model, which is why the vulnerability fix chose 6.8.0: it closes every advisory and the action classes compile unchanged. But Struts 6 is still built on `javax.servlet`. **Struts 7** is the first release built on `jakarta.servlet` (Jakarta EE 10), and it is a migration rather than a version bump:
-   - `ActionSupport` moved from `com.opensymphony.xwork2` to `org.apache.struts2`
-   - Request parameters only reach setters annotated `@StrutsParameter`
-   - JSP expressions may only read classes on an OGNL *allowlist*
+1. **Server configuration.** `server.xml` still asked Liberty for the Java EE 7 features, so Liberty refused the Jakarta EE 10 `web.xml`.
+2. **Framework generation.** Struts **6.x** is the newest line that keeps the old programming model, which is why the vulnerability fix chose 6.8.0: it closes every advisory and the action classes compile unchanged. But Struts 6 is still built on `javax.servlet`. **Struts 7** is the first release built for Jakarta EE, and it's a migration rather than a version bump — a package move, plus security rules that decide which request parameters and which classes a page may touch.
 
-None of these appear at compile time — the app's own code never touches the servlet API — so the build is genuinely green. This is normal in modernization work: **build-green and deploy-green are two milestones**, and this exercise is the second one.
+None of this appears at compile time — the application's own code never touches the servlet API — so the build was genuinely green. That's normal in modernization work: **build-green and deploy-green are two milestones**. The workflow got you the first; Bob, given a plain goal, worked out the second.
 
-### 3. Ask Bob to finish the migration
-<sub>⏱ About 15 minutes</sub>
+### 5. Verify the application
+<sub>⏱ About 5 minutes</sub>
 
-In Bob's chat (with no workflow running), paste:
+Check that the upgraded application behaves like the Java 8 one:
+- The dashboard shows **3** prescriptions with **RX001** pending
+- **View** on a prescription shows the patient, doctor and medicine
+- **Create Prescription** offers 9 medicines, saves, and the new row appears in the list
+- **Validate** on RX001 removes it from the dashboard's pending list
 
-```
-The application builds, but Liberty fails to start it:
+Stop the server when you're done (`mvn liberty:stop`, or `./stop-liberty.sh`).
 
-CWWKC2263E: The webapp : WEB-INF/web.xml deployment descriptor on line 5 specifies version 60,
-which is higher than the current provisioned version 31.
+### ✋ Checkpoint — the pharmacy runs on Java 21, Jakarta EE 10 and Struts 7
 
-The project is now on Java 21 and Jakarta EE 10. Make it run on Liberty:
-update server.xml to the Jakarta EE 10 features, move Struts to a Jakarta-based 7.x release,
-and make the code and configuration changes Struts 7 needs. Show me each change before applying it.
-```
+<details>
+<summary>Instructor reference: the changes that make it run</summary>
 
-Review each proposal against this checklist — these are the changes that made the app run in the verification run:
+Use this to coach a stuck table, not as the prompt. Bob may choose different but equivalent fixes (for example, swapping in the Jakarta JSTL jar instead of removing the unused one).
 
 | File | Change | Why |
 |---|---|---|
 | `server.xml` | `servlet-3.1` → `servlet-6.0`, `jsp-2.3` → `pages-3.1` | Liberty must provide Jakarta EE 10 |
-| `pom.xml` | `struts2.version` → `7.4.0`; remove the unused `javax.servlet:jstl` | Struts 7 is built on `jakarta.servlet`; no JSP uses JSTL |
+| `pom.xml` | `struts2.version` → 7.x (7.4.0 verified); replace or remove `javax.servlet:jstl` | Struts 7 is built on `jakarta.servlet`; no JSP actually uses JSTL |
 | 4 action classes | `import org.apache.struts2.ActionSupport;` | The class moved in Struts 7 |
 | 4 action classes | `@StrutsParameter` on every setter that receives a request parameter | Without it, forms and detail pages lose their input |
-| `struts.xml` | allowlist `com.pharmacy.model` and the `java.util` collections | Without it, JSPs show blank fields and an empty dashboard list |
+| `struts.xml` | DOCTYPE stays on `struts-6.0.dtd` or `struts-6.5.dtd` (there is no 7.0 DTD); allowlist `com.pharmacy.model` and `java.util.ArrayList,java.util.List,java.util.Collection` | Without the allowlist, JSPs show blank fields and an empty dashboard list |
 
-<details>
-<summary>Reference: the exact edits</summary>
-
-`src/main/liberty/config/server.xml`
 ```xml
-<featureManager>
-    <feature>servlet-6.0</feature>
-    <feature>pages-3.1</feature>
-    <feature>jndi-1.0</feature>
-</featureManager>
-```
-
-`pom.xml`
-```xml
-<struts2.version>7.4.0</struts2.version>
-<!-- and delete the javax.servlet:jstl 1.2 dependency -->
-```
-
-Each action class (`DashboardAction`, `MedicineAction`, `OrderAction`, `PrescriptionAction`)
-```java
-import org.apache.struts2.ActionSupport;
-import org.apache.struts2.interceptor.parameter.StrutsParameter;   // classes with setters
-
-    @StrutsParameter
-    public void setPrescriptionId(String prescriptionId) { ... }    // and every other setter
-```
-
-`src/main/resources/struts.xml`
-```xml
+<!-- struts.xml -->
 <constant name="struts.allowlist.packageNames" value="com.pharmacy.model" />
 <constant name="struts.allowlist.classes" value="java.util.ArrayList,java.util.List,java.util.Collection" />
 ```
-</details>
+```java
+// each action class with setters
+import org.apache.struts2.interceptor.parameter.StrutsParameter;
 
-> The allowlist and `@StrutsParameter` are Struts 7 security features — they're why Struts 7 closes whole classes of OGNL vulnerabilities. Allow what the app needs; don't switch them off.
-
-### 4. Verify the application
-<sub>⏱ About 5 minutes</sub>
-
-```bash
-mvn clean package && mvn liberty:run
+    @StrutsParameter
+    public void setPrescriptionId(String prescriptionId) { ... }
 ```
 
-Expect `CWWKZ0001I: Application simple-pharmacy.war started`, then open:
-
-| Page | URL |
-|---|---|
-| Dashboard | http://localhost:9081/simple-pharmacy.war/dashboard |
-| Prescriptions | http://localhost:9081/simple-pharmacy.war/prescription-list |
-| Orders | http://localhost:9081/simple-pharmacy.war/order-list |
-| Medicines | http://localhost:9081/simple-pharmacy.war/medicine-list |
-
-Check that it behaves like the original:
-- The dashboard shows **3** prescriptions with **RX001** pending
-- **View** on a prescription shows the patient, doctor and medicine (not blank fields)
-- **Create Prescription** offers 9 medicines, saves, and the new row appears in the list
-- **Validate** on RX001 removes it from the dashboard's pending list
-
-> The context root includes `.war` because `server.xml` doesn't set one. The bare root URL shows a Struts "Problem Report" page in the original app too — start from `/dashboard`.
-
-### ✋ Checkpoint — the dashboard is running on Java 21, Jakarta EE 10 and Struts 7
+The allowlist and `@StrutsParameter` are Struts 7 security features — allow what the app needs; don't switch them off.
+</details>
 
 ---
 
@@ -451,7 +475,11 @@ Check that it behaves like the original:
 | Agent steps finish instantly, *"Request Failed — An unexpected error occurred"*, Usage stays at `0.0000` | Bob's session is stale. **Sign out of Bob and sign back in**, then retry |
 | A sub-agent's write-up ends and nothing happens | Click **End subtask** at the bottom right |
 | *Command cancelled* | Something was typed in chat while a command awaited approval. Ask Bob to continue, then approve again |
-| `CWWKC2263E … version 60 … higher than … 31` | Exercise 3: Liberty still has the Java EE 7 features |
+| Original app fails to start with an ASM / bytecode error | Maven is running a JDK newer than Java 21 (often Homebrew's). Point `JAVA_HOME` at Java 8 for the baseline run |
+| *Medicines → View* fails | Pre-existing: `medicine-view.jsp` was never written. Happens on Java 8 too |
+| `CWWKC2263E … version 60 … higher than … 31` | Liberty still has the Java EE 7 features (Exercise 3) |
+| `FileNotFoundException: …/dtds/struts-7.0.dtd` | There's no 7.0 DTD. Use `struts-6.5.dtd` in `struts.xml` |
+| Bob proposes `pkill -f "liberty:run"` | Reject it — it stops every Liberty server on the machine. Ask for `mvn liberty:stop` |
 | `SRVE0321E: The [struts2] filter did not load` and every page returns 500 | Struts 6 on a Jakarta EE 10 server: move to Struts 7 (Exercise 3) |
 | *"Parameter injection for method [setX] … rejected"* on a page | Add `@StrutsParameter` to that setter |
 | Detail pages show blank fields, or the dashboard says *No pending prescriptions* | Add the `struts.allowlist.*` constants to `struts.xml` |
@@ -467,7 +495,7 @@ You have:
 - ✅ Approved a diagnosed dependency fix after reading the diff
 - ✅ Turned a Java upgrade into a vulnerability remediation — 10 advisories closed, each one named
 - ✅ Read a per-task cost breakdown
-- ✅ Taken the application from *builds* on Java 21 to *runs* on Jakarta EE 10 and Struts 7
+- ✅ Watched Bob take the application from *builds* to *runs* — from a one-line request
 
 Bring one surprise and one criticism to the regroup. The criticism is the more useful of the two.
 
@@ -476,6 +504,7 @@ Bring one surprise and one criticism to the regroup. The criticism is the more u
 # Optional extras
 
 - **Audit the namespace migration** — ask Bob: *"Audit all imports and configuration for remaining `javax.*` references that should be `jakarta.*`."*
+- **Fix the pre-existing bug** — ask Bob: *"Medicines → View fails. Can you find out why and fix it?"*
 - **Lab 4 — unit test generation** (`Bobathon/labs/lab4-unit-test-generation/LAB4-GUIDE.md`). For a quick run, set *Candidate Selection Strategy* to the `com.pharmacy.repository` package.
 - **Lab 5 — security vulnerability remediation** (`Bobathon/labs/lab5-security-vulnerability-remediation/LAB5-GUIDE.md`) — SQL injection, XSS and input validation.
 - **Lab 3 — UI modernization** (`Bobathon/labs/lab3-ui-modernization/LAB3-GUIDE.md`). Needs Node.js/npm and Docker; the guide builds a React + Material UI front end, not Angular.
