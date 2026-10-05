@@ -156,7 +156,7 @@ echo "🎬 Ready for Demo! Next steps:"
 echo "   1. Switch Bob to '🎫 SDLC Incident Manager' mode"
 echo "   2. Tell Bob:"
 echo "      \"Users reporting severe performance issues. Application is very slow,"
-echo "      \"taking 3-5 seconds to load pages. Server appears overloaded.\""
+echo "      \"taking 3-5 seconds to load pages.\""
 echo "🛑 To shutdown: ./shutdown-flow.sh"
 
 # Made with Bob

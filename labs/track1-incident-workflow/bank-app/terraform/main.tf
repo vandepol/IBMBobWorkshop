@@ -190,7 +190,7 @@ resource "docker_container" "backend" {
   }
   
   healthcheck {
-    test     = ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+    test     = ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
     interval = "30s"
     timeout  = "10s"
     retries  = 3
@@ -241,7 +241,7 @@ resource "docker_container" "frontend" {
   }
   
   healthcheck {
-    test     = ["CMD", "wget", "--spider", "-q", "http://localhost"]
+    test     = ["CMD", "wget", "--spider", "-q", "http://127.0.0.1"]
     interval = "30s"
     timeout  = "10s"
     retries  = 3

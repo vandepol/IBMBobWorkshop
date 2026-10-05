@@ -9,6 +9,20 @@ set -uo pipefail
 
 LAB_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$LAB_DIR"
+
+# Linux with rootless Podman (e.g. the Red Hat TechZone VM): turn on this user's Podman socket
+# and let short image names like nginx:alpine resolve on Docker Hub without an interactive prompt.
+PODMAN_LINUX=0
+if [ "$(uname)" = "Linux" ] && command -v podman > /dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
+    PODMAN_LINUX=1
+    systemctl --user enable --now podman.socket > /dev/null 2>&1 || true
+    REG_CONF="$HOME/.config/containers/registries.conf"
+    if ! grep -qs 'unqualified-search-registries' "$REG_CONF"; then
+        mkdir -p "$(dirname "$REG_CONF")"
+        printf 'unqualified-search-registries = ["docker.io"]\n' >> "$REG_CONF"
+    fi
+fi
+
 source demo-scripts/docker-host.sh
 
 ok()   { echo "  ✓ $1"; }
@@ -29,6 +43,19 @@ if command -v node > /dev/null 2>&1 && [ "$(node -p 'process.versions.node.split
     ok "Node $(node --version)"
 else
     fail "Node 20 or higher not found — https://nodejs.org"
+fi
+if [ $PODMAN_LINUX -eq 1 ]; then
+    # Bob runs some commands in its own shell; make the user socket the default there too.
+    if [ -n "${DOCKER_HOST:-}" ] && ! grep -qs 'podman/podman.sock' "$HOME/.bashrc"; then
+        echo 'export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock' >> "$HOME/.bashrc"
+        ok "DOCKER_HOST added to ~/.bashrc (open a new terminal for it to apply)"
+    fi
+    if [ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start 2> /dev/null || echo 0)" -gt 80 ]; then
+        fail "rootless Podman can't use port 80 for the frontend. Run:
+      echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/90-track1.conf && sudo sysctl --system"
+    else
+        ok "port 80 available to rootless Podman"
+    fi
 fi
 if [ $FAILED -ne 0 ]; then
     echo; echo "Fix the items above and re-run ./setup-local.sh"; exit 1
