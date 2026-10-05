@@ -1,13 +1,13 @@
 # IBM Bob — Java Upgrade Lab
 ## Simple Pharmacy: Java 8 → Java 21 and Jakarta EE 10, running on Liberty
 
-<sub>⏱ About 90 minutes in total · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1 (macOS), 2 October 2026, and IBM Bob 2.1.0 on the Red Hat 9.6 TechZone VM, 5 October 2026</sub>
+<sub>⏱ About 90 minutes in total, including 15 minutes of setup · Bob tier: Premium Package for Java · Verified on IBM Bob 2.2.1 (macOS), 2 October 2026, and IBM Bob 2.1.0 on the Red Hat 9.6 TechZone VM, 5 October 2026</sub>
 
 ---
 
 ## Table of Contents
 1. [Introduction](#introduction)
-2. [Prerequisites](#prerequisites)
+2. [Set up your environment](#set-up-your-environment)
 3. [What to watch for](#what-to-watch-for)
 4. [The Java Modernization workflow](#the-java-modernization-workflow)
 5. [Setting up](#setting-up)
@@ -61,28 +61,16 @@ By the end of this lab you will have:
 
 ---
 
-# Prerequisites
+# Set up your environment
 
-<sub>⏱ About 15 minutes — do this before the session. On the sandbox VM it has already been done.</sub>
+<sub>⏱ About 15 minutes, at the start of the lab. Everyone on the TechZone image starts from the same clean VM — Bob and Firefox only — so everyone runs these steps.</sub>
 
-### 1. IBM Bob, on the right team, with the Java package installed
-- IBM Bob IDE installed and signed in
-- Open **Bob ⚙ → General** and check two things:
-  1. **Team** — if your account belongs to several teams, pick the one your instructor gave you. Not every team includes the Java package; the add-ons list changes when you switch.
-  2. **Add-ons** — **IBM Bob Premium Package for Java Modernization** must be listed. If it shows an **Install** button, click it, then **Trust Publisher & Install**. Bob opens the *IBM Bob Premium Package for Java* welcome page when it's done.
+Open a terminal (**Activities → Terminal**). On the TechZone VM, `itzuser` has passwordless `sudo`, and Bash 5, `zip`, `unzip`, `curl` and `git` are already there.
 
-### 2. A modern Bash (macOS only)
+> Working in the browser (Guacamole): if a click doesn't register, click again. **Ctrl+C may not reach the VM** — stop things from a second terminal tab (**Ctrl+Shift+T**) instead. Firefox asks for confirmation on **Ctrl+Q**; press **Enter**.
 
-> **Red Hat / TechZone VM:** skip this step. RHEL 9 ships Bash 5.1, and `zip`, `unzip`, `curl` and `git` are already installed on the TechZone image.
-
-SDKMAN's installer needs **Bash 4 or newer**; macOS ships Bash 3.2. Without this step the install stops with *"SDKMAN requires Bash 4 or higher"*, and Bob's own **Install SDKMan** button fails the same way.
-
-```bash
-brew install bash        # needs Homebrew (admin rights); on a locked-down laptop use the sandbox VM
-bash --version           # should report 5.x — open a new terminal first
-```
-
-### 3. SDKMAN, Java 8 and Maven
+### 1. SDKMAN, Java 8 and Maven
+<sub>⏱ About 2 minutes</sub>
 
 SDKMAN is **required**: the workflow checks for it before it will continue (Windows uses WinGet instead).
 
@@ -99,31 +87,27 @@ sdk install maven
 
 Don't install Java 21 yourself — Bob offers to install it during the lab. (If a Java 21 is already installed, Bob uses it and skips that step; the lab still works.)
 
-### 4. The lab code, with Maven's cache warmed
+### 2. The lab code, with Maven's cache warmed
+<sub>⏱ About 1 minute</sub>
 
 ```bash
-git clone https://github.com/vandepol/IBMBobWorkshop
-cd IBMBobWorkshop/labs/track2-java-upgrade
+git clone https://github.com/vandepol/IBMBobWorkshop ~/IBMBobWorkshop
+cd ~/IBMBobWorkshop/labs/track2-java-upgrade
 mvn -B dependency:go-offline && mvn -B clean
 ```
 
-### 5. Restart Bob
-
-Fully quit and reopen Bob so it picks up SDKMAN, Java and Maven.
-
 > No Docker is needed. Liberty is downloaded by the Liberty Maven plugin the first time you run the app.
 
-### Red Hat Enterprise Linux (TechZone VM)
+### 3. Open the lab in Bob
+<sub>⏱ About 3–5 minutes the first time</sub>
 
-Steps 3 and 4 run unchanged on RHEL 9. A few things are different on the TechZone desktop:
-
-**Opening Bob.** Bob is installed as the `bobide` package. Start it on the lab folder from a terminal, so it picks up SDKMAN's Java and Maven:
+Start Bob from the terminal, so it picks up SDKMAN's Java and Maven:
 
 ```bash
 bobide ~/IBMBobWorkshop/labs/track2-java-upgrade
 ```
 
-**First launch — expect these prompts, in this order:**
+The first time Bob starts on the VM, expect these prompts, in this order:
 
 | Prompt | What to do |
 |---|---|
@@ -132,20 +116,33 @@ bobide ~/IBMBobWorkshop/labs/track2-java-upgrade
 | *Restricted Mode is intended for safe code browsing* | Click **Manage → Trust**. Bob can't run commands in an untrusted folder |
 | *Bob v1.0.0 chats were created in an older version* | **Skip migration** |
 | *A git repository was found in the parent folders* | **Never** |
-| *A new update is available* | Leave it — stay on the version the lab was set up with |
+| *A new update is available* | Leave it for now |
 | **Log in to Bob** → *The extension wants to sign in* | **Allow**, sign in with your IBMid in Firefox |
 | Firefox: *Allow this site to open the ibm-bob link?* | **Open Link** |
 | Bob: *Allow 'IBM Bob' extension to open this URI?* | **Open** |
 | *You are entitled to the Premium Package for Z* | **Cancel** — this lab doesn't need it |
 
-Then do step 1 above (Team and Add-ons).
+### 4. The right team, with the Java package installed
+<sub>⏱ About 2 minutes</sub>
 
-**Bob 2.1.0.** The TechZone image ships Bob 2.1.0; the screenshots in this guide are from 2.2.1, and the workflow steps are the same. The ▶ button in the Bob panel only appears **after** the Java package is installed. You can also start the workflow from the *IBM Bob Premium Package for Java* welcome page that opens after the install: **Java Upgrade → Start**.
+Open **Bob ⚙ → General** and check two things:
+1. **Team** — if your account belongs to several teams, pick the one your instructor gave you. Not every team includes the Java package; the add-ons list changes when you switch.
+2. **Add-ons** — **IBM Bob Premium Package for Java Modernization** must be listed. If it shows an **Install** button, click it, then **Trust Publisher & Install**. Bob opens the *IBM Bob Premium Package for Java* welcome page when it's done.
 
-**Working through the browser (Guacamole).**
-- If a click doesn't register, click again — the first click sometimes only moves focus.
-- **Ctrl+C may not reach the VM.** Stop the server from a second terminal tab (**Ctrl+Shift+T**) with `./stop-liberty.sh` instead.
-- Firefox asks for confirmation on **Ctrl+Q**; press **Enter** to quit.
+The ▶ button in the Bob panel only appears **after** the Java package is installed. You can also start the workflow from that welcome page: **Java Upgrade → Start**.
+
+> **Bob version.** The TechZone image has shipped Bob 2.1.0; the screenshots in this guide are from 2.2.1, and the workflow steps are the same on both. Track 3 (Z) needs 2.2.0 or newer: quit Bob, click its **Update** button (or go to bob.ibm.com/download), download the **Linux RPM x64**, and run `sudo dnf install -y --nogpgcheck ~/Downloads/IBM-Bob-linux-x64-*.rpm` (the RPM isn't signed, like the one on the image).
+
+### On a Mac laptop
+
+Same steps 1–4, with two differences: open the folder in Bob with **File → Open Folder**, and install a modern Bash **before** step 1. SDKMAN's installer needs **Bash 4 or newer**; macOS ships Bash 3.2. Without it the install stops with *"SDKMAN requires Bash 4 or higher"*, and Bob's own **Install SDKMan** button fails the same way.
+
+```bash
+brew install bash        # needs Homebrew (admin rights); on a locked-down laptop use the TechZone VM
+bash --version           # should report 5.x — open a new terminal first
+```
+
+After installing SDKMAN, Java and Maven, fully quit and reopen Bob so it picks them up.
 
 ---
 
@@ -191,7 +188,7 @@ sdk version      # SDKMAN must be present
 
 ### 2. Open the snapshot folder as the project root
 
-In Bob: **File → Open Folder** → `labs/track2-java-upgrade`
+If you opened Bob with `bobide` in setup step 3, it's already open — skip ahead. Otherwise, in Bob: **File → Open Folder** → `labs/track2-java-upgrade`
 
 ```
 IBMBobWorkshop/labs/track2-java-upgrade
@@ -213,9 +210,9 @@ If Bob asks which workspace to use, pick **track2-java-upgrade**. **Java Moderni
 
 ![Bob workflows list with Java Modernization](images/track2-java/01-workflow-list.png)
 
-> 🚩 **No Java Modernization?** Check **Bob ⚙ → General**: the right **Team** selected, and the **Premium Package for Java Modernization** installed (Prerequisites, step 1).
+> 🚩 **No Java Modernization?** Check **Bob ⚙ → General**: the right **Team** selected, and the **Premium Package for Java Modernization** installed (*Set up your environment*, step 4).
 >
-> **No ▶ button at all?** It only appears once the Java package is installed (Prerequisites, step 1).
+> **No ▶ button at all?** It only appears once the Java package is installed (*Set up your environment*, step 4).
 
 ### 4. See the original application running on Java 8
 <sub>⏱ About 5 minutes (the first run downloads Liberty)</sub>

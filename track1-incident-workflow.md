@@ -1,8 +1,8 @@
 # Track 1 — IBM Bob, standard
 ## Lab: an AI partner that runs your incident, not just your editor
 
-**Time:** 60 minutes
-**Environment:** pre-baked sandbox VM — nothing to install. Or your own laptop — see *Running on your own laptop* below.
+**Time:** about 75 minutes — the first 15 set up the environment
+**Environment:** the IBM TechZone Red Hat Enterprise Linux 9 VM, in your browser. It starts with Podman and IBM Bob only; you install the rest in the first part of the lab. Or your own laptop — see *On a Mac laptop* below.
 **Bob tier:** standard (no premium entitlement needed)
 **Tested on:** IBM Bob 2.2.1, macOS with Podman · IBM Bob 2.1.0, Red Hat Enterprise Linux 9.6 (TechZone VM) with rootless Podman, 5 October 2026
 
@@ -24,23 +24,16 @@ The point of this hour is not that AI can write code. It is that a properly conf
 
 ---
 
-## Running on your own laptop
+## 0:00–0:15 · Set up the environment
 
-Do this **before** the session; it needs the network and takes 5–10 minutes. On the sandbox VM it has already been done.
+Everyone on the TechZone image starts from the same clean VM, so everyone runs these steps. Open a terminal (**Activities → Terminal**). `itzuser` has passwordless `sudo`.
 
-You need Docker Desktop, Colima or Podman (running), Terraform 1.x, Ansible core 2.x, Node 20+ and IBM Bob.
+> Working in the browser: if a click doesn't register, click again. **Ctrl+C may not reach the VM** — stop things from a second terminal tab (**Ctrl+Shift+T**) instead.
 
-```bash
-git clone https://github.com/vandepol/IBMBobWorkshop
-cd IBMBobWorkshop/labs/track1-incident-workflow
-./setup-local.sh
-```
+### 1. Install the tools
+<sub>⏱ About 2 minutes</sub>
 
-Then open `IBMBobWorkshop/labs/track1-incident-workflow` in Bob. Every command in this lab runs from that folder. If you move the folder, run `./setup-local.sh` again.
-
-### Red Hat Enterprise Linux (TechZone VM)
-
-A fresh RHEL 9 VM has Podman but none of the other tools. Install them (about 2 minutes; `itzuser` has passwordless sudo on TechZone):
+The image has Podman, but not Node, Ansible, Terraform or the `docker` command:
 
 ```bash
 sudo dnf module install -y nodejs:20/common
@@ -50,27 +43,64 @@ sudo dnf install -y terraform
 sudo touch /etc/containers/nodocker          # silences "Emulate Docker CLI using podman"
 ```
 
-Rootless Podman can't bind port 80, which the app's frontend uses. Allow it once:
+If `node` prompts *Install package 'nodejs'?*, answer **N** — the first command installs the right version.
+
+### 2. Let rootless Podman use port 80
+<sub>⏱ Seconds</sub>
+
+The app's frontend listens on port 80, which a normal user can't bind by default:
 
 ```bash
 echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/90-track1.conf && sudo sysctl --system
 ```
 
-Then clone and run `./setup-local.sh` as above. On Linux with Podman it also:
-- turns on your user's Podman socket and points Terraform at it (`/var/run/docker.sock` from `podman-docker` is root's socket, which `itzuser` can't use), and adds `DOCKER_HOST` to `~/.bashrc` so commands Bob runs use it too — **open a new terminal afterwards**;
-- tells Podman to look up short image names such as `nginx:alpine` on Docker Hub. Without this, pulls fail with *"short-name resolution enforced but cannot prompt without a TTY"*.
+### 3. Get the lab and run its setup
+<sub>⏱ About 2 minutes</sub>
 
-Open Bob on the folder with `bobide ~/IBMBobWorkshop/labs/track1-incident-workflow`. The first time, Bob opens it in **Restricted Mode**: click **Manage → Trust**. **The MCP servers don't start until the folder is trusted.** For Bob's other first-run prompts (keyring password, sign-in links), see *Red Hat Enterprise Linux (TechZone VM)* in the Track 2 guide.
+```bash
+git clone https://github.com/vandepol/IBMBobWorkshop ~/IBMBobWorkshop
+cd ~/IBMBobWorkshop/labs/track1-incident-workflow
+./setup-local.sh
+```
 
-> On Podman, `docker ps` shows the app's containers as **(unhealthy)** even when they work. Inside a Podman container `localhost` resolves to IPv6 first and the services listen on IPv4. The repo's health checks now use `127.0.0.1`; if you see *unhealthy* anyway, it's cosmetic — check the app itself.
+`setup-local.sh` checks the tools, builds the three MCP servers, writes this folder's paths into `.bob/mcp.json` (Bob needs absolute paths), runs `terraform init` and pre-pulls the images. On Podman it also turns on your user's Podman socket, points `DOCKER_HOST` at it (and adds that to `~/.bashrc`), and tells Podman to find short image names like `nginx:alpine` on Docker Hub. Every check should show ✓.
 
----
+Then **close the terminal and open a new one**, so the `DOCKER_HOST` it added applies, and go back to the lab folder:
 
-## 0:00–0:05 · Smoke test
+```bash
+cd ~/IBMBobWorkshop/labs/track1-incident-workflow
+```
 
-Everything is pre-installed. This is purely to catch a bad image while there is still time to reseat you.
+Every command in this lab runs from that folder.
 
-Open the terminal in Bob (**Terminal → New Terminal**) and run:
+### 4. Open the lab in Bob
+<sub>⏱ About 3–5 minutes the first time</sub>
+
+```bash
+bobide ~/IBMBobWorkshop/labs/track1-incident-workflow
+```
+
+The first time Bob starts on the VM, expect these prompts, in this order:
+
+| Prompt | What to do |
+|---|---|
+| *Choose password for new keyring* | Pick a password you'll remember and click **Continue**. Bob keeps your sign-in there; don't cancel |
+| *Welcome to Bob — import your settings?* | **Skip for now** |
+| *Restricted Mode is intended for safe code browsing* | **Manage → Trust**. **The MCP servers don't start until the folder is trusted** |
+| *Bob v1.0.0 chats were created in an older version* | **Skip migration** |
+| *A git repository was found in the parent folders* | **Never** |
+| **Log in to Bob** → *The extension wants to sign in* | **Allow**, then sign in with your IBMid in Firefox |
+| Firefox: *Allow this site to open the ibm-bob link?* | **Open Link** |
+| Bob: *Allow 'IBM Bob' extension to open this URI?* | **Open** |
+| *You are entitled to the Premium Package for Z* | **Cancel** — this lab uses standard Bob |
+| *A new update is available* | Leave it for now |
+
+If your account belongs to more than one Bob team, check **Bob ⚙ → General → Team** is the one your instructor gave you.
+
+### 5. Smoke test
+<sub>⏱ About 2 minutes</sub>
+
+In a terminal in the lab folder:
 
 ```bash
 docker ps            # a table, empty or not — not an error
@@ -79,17 +109,23 @@ ansible --version    # ansible [core 2.x]
 node --version       # v20 or higher
 ```
 
-Then, in Bob: click the **⚙ gear** at the top of the Bob chat panel to open **Bob Settings**, then choose **MCP** in the left-hand list. Wait a few seconds for the table to load. You must see three rows — **servicenow**, **terraform**, **ansible** — each with Status **Connected**. (Any other rows, such as `box`, do not matter.)
+Then, in Bob: click the **⚙ gear** at the top of the Bob chat panel to open **Bob Settings**, then choose **MCP** in the left-hand list. Wait a few seconds for the table to load. You must see three rows — **servicenow**, **terraform**, **ansible** — each with Status **Connected**. (Any other rows do not matter.)
 
-> 🚩 **If any of the three says anything other than Connected, Bob has no tools and the lab cannot run.** Raise your hand immediately — do not try to fix it yourself. It is almost always a path in `.bob/mcp.json` that does not match this machine — on your own laptop, re-run `./setup-local.sh` and restart Bob.
+> 🚩 **If any of the three says anything other than Connected, Bob has no tools and the lab cannot run.** Check the folder is trusted (no *Restricted Mode* banner), then re-run `./setup-local.sh` and reload Bob (**F1 → Developer: Reload Window**). Still not green? Raise your hand.
 
 ### ✋ CHECKPOINT 1 — *everyone has three Connected MCP servers*
 
 Do not start the lab until the room is green. A participant who starts without working MCP servers will get twenty minutes in before it becomes obvious.
 
+> On Podman, `docker ps` may show containers as **(unhealthy)** even when they work: inside a Podman container `localhost` resolves to IPv6 first. The repo's health checks use `127.0.0.1`; if you still see *unhealthy*, it's cosmetic — check the app itself.
+
+### On a Mac laptop
+
+You need Docker Desktop, Colima or Podman (running), plus Terraform 1.x, Ansible core 2.x and Node 20+ (for example `brew install terraform ansible node@20`), and IBM Bob. Then step 3 above — `./setup-local.sh` detects Colima and Podman sockets — open the folder in Bob, trust it, and do the smoke test. Steps 1 and 2 are Red Hat only.
+
 ---
 
-## 0:05–0:13 · Deploy the application and see it healthy
+## 0:15–0:23 · Deploy the application and see it healthy
 
 You need to know what "good" looks like before you break it.
 
@@ -118,7 +154,7 @@ Open **http://localhost** (in your browser, or in Bob with **⇧⌘P → Simple 
 
 ---
 
-## 0:13–0:18 · Cause a production incident
+## 0:23–0:28 · Cause a production incident
 
 ```bash
 ./demo-scripts/bank-app/setup-flow.sh
@@ -132,7 +168,7 @@ Do this properly — actually click through it. Three to five seconds per page i
 
 ---
 
-## 0:18–0:28 · Read the mode before you use it
+## 0:28–0:38 · Read the mode before you use it
 
 This is the part people skip and it is the most important ten minutes in the lab. Everything Bob is about to do correctly, it does correctly *because of what is in this mode*.
 
@@ -163,7 +199,7 @@ Open `1_workflow.xml` and skim it. Then open `4_quick_reference.xml` and look at
 
 ---
 
-## 0:28–0:48 · Hand the incident to Bob
+## 0:38–0:58 · Hand the incident to Bob
 
 Start a fresh chat: click **+** (New Task) at the top of the Bob panel. Then click the mode selector and choose **🎫 SDLC Incident Manager**. Confirm the selector now reads **🎫 SDLC Incident Manager** before continuing.
 
@@ -216,7 +252,7 @@ What Bob did in the tested run, in order (about 17 approvals, ~10 minutes of Bob
 
 ---
 
-## 0:48–0:56 · Verify the fix yourself
+## 0:58–1:06 · Verify the fix yourself
 
 Do not take Bob's word for it.
 
@@ -236,7 +272,7 @@ Read those work notes as an auditor would. Ask whether this is better or worse t
 
 ---
 
-## 0:56–1:00 · Debrief
+## 1:06–1:15 · Debrief
 
 Take two minutes before your track lead pulls the room together:
 
