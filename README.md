@@ -6,6 +6,7 @@ Hands-on labs for IBM Bob, each about 60–90 minutes including setup. Participa
 |---|---|---|
 | [Track 1 — Incident workflow](track1-incident-workflow.md) | A custom mode and MCP servers let Bob run an incident end to end: open the ticket, diagnose with Ansible, scale out with Terraform, verify, close | Standard |
 | [Track 2 — Java 8 → 21](track2-java-upgrade.md) | The Java Modernization workflow upgrades a real application to Java 21 and Jakarta EE 10, then Bob gets it running on Liberty with Struts 7 | Premium Package for Java |
+| [Bonus 2b — WebSphere → Liberty](track2b-liberty-replatforming.md) | The Liberty Modernization workflow takes an AMA migration plan and replatforms the pharmacy from WebSphere traditional to Liberty — recipes, two reasoned fixes, a local deployment | Premium Package for Java |
 | [Track 3 — Mainframe (Z)](track3-z-bank-of-z.md) | Understanding a CICS / IMS / DB2 COBOL bank you've never seen, using Bank of Z | Premium Package for Z |
 
 ## Layout
@@ -15,6 +16,8 @@ Each track is one guide at the top level. Tracks 1 and 2 also have a folder unde
 ```
 track1-incident-workflow.md      labs/track1-incident-workflow/   bank app, Terraform, Ansible, MCP servers, Local Service Desk
 track2-java-upgrade.md           labs/track2-java-upgrade/        Java 8 pharmacy app (Struts, Maven)
+track2b-liberty-replatforming.md labs/track2b-liberty-replatforming/  Same pharmacy app, packaged for WebSphere traditional
+                                 labs/track2b-migration-plan/     The AMA migration plan (.zip) the workflow takes as input
 track3-z-bank-of-z.md            (clone IBM/Bank-of-Z)            Bank of Z: CICS / IMS / DB2 COBOL
 ```
 
@@ -24,6 +27,7 @@ Every participant runs their track's setup at the start of the lab — it's the 
 
 - **Track 1:** install Node, Ansible, Terraform and the Podman Docker shim with `dnf`, allow port 80 for rootless Podman, clone this repo and run `labs/track1-incident-workflow/setup-local.sh`. The script builds the MCP servers, writes this folder's absolute paths into `.bob/mcp.json` (Bob needs absolute paths), points `DOCKER_HOST` at Podman or Colima, runs `terraform init` and pre-pulls the images. Run it again if you move the folder.
 - **Track 2 Java:** install SDKMAN, Java 8 and Maven, clone this repo and warm Maven's cache, open the lab folder in Bob, then pick the right team and install the Premium Package for Java.
+- **Bonus 2b Liberty:** as Track 2, plus Semeru 21 installed alongside Java 8 (not the default) — the AMA recipes move the project to Java 21.
 - **Track 3 Z:** clone [Bank of Z](https://github.com/IBM/Bank-of-Z), upgrade Bob to 2.2.0 or newer if needed (the Premium Package for Z requires it), and install the Premium Package for Z.
 
 On the TechZone VM, Bob's first launch also asks for a keyring password, to trust the folder, and to sign in; each guide lists those prompts.
@@ -36,6 +40,7 @@ Run a track's setup on one VM before the session and check:
 
 - **Track 1:** Bob ⚙ → MCP shows **servicenow**, **terraform** and **ansible** as **Connected** with `labs/track1-incident-workflow` open.
 - **Track 2 Java:** Bob ⚙ → General shows the workshop **Team** with **Premium Package for Java Modernization** installed, and Bob's ▶ workflow list shows **Java Modernization** with `labs/track2-java-upgrade` open.
+- **Bonus 2b Liberty:** as Track 2, with `labs/track2b-liberty-replatforming` open; `ls ~/.sdkman/candidates/java` lists an `8.0.x-zulu` and a `21.x-sem`.
 - **Track 3 Z:** Bob ⚙ shows version 2.2.0 or newer, and **Z Code** and **Z Architect** appear in the mode selector.
 
 ## Resetting between runs
